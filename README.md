@@ -1,5 +1,7 @@
 # Applied-Cryptography-Bulletin-Board-System
-Foundations of Cybersecurity/Applied Cryptography (a.a.2023-24) project
+Created by Francesco Copelli and Nicola Lepore on May 2024 during the course "Foundations of Cybersecurity/Applied Cryptography" at University of Pisa (A.A. 2023-2024)
+
+## Specifications
 
 Protocollo Crittografico per il Sistema BBS che utilizza C/C++ e OpenSSL (escluso TLS):
 
