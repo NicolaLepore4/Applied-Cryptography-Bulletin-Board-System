@@ -71,6 +71,7 @@ public:
             sockaddr_in clientAddress{};
             socklen_t clientLen = sizeof(clientAddress);
             int clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddress, &clientLen);
+            printf("A client connected\n");
             if (clientSocket < 0) {
                 cerr << "Cannot accept connection\n";
                 continue;
@@ -78,6 +79,7 @@ public:
 
             users.push_back(Client(clientSocket, thread([clientSocket]() {
                 // TODO: Implement the client handling logic
+                
                 close(clientSocket);
             })));
         }
@@ -88,5 +90,6 @@ int main() {
     printf("Server started\n");
     Server server = Server ();
     server.start();
+
 
 }
