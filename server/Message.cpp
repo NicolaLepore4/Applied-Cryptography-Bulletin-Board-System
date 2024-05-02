@@ -1,70 +1,94 @@
 #include <iostream>
+#include <string>
 using namespace std;
 
 // Structure to represent a message
 class Message {
 private:
-    int identifier; // Unique identifier for the message of 6 elements
-    string title, author, body;
+    int identifier = 0; // Unique identifier for the message of 6 elements
+    string title = " ", author = " ", body = " ";
     
 public:
-    Message(int identifier, string title, string author, string body) {
+    Message() = default;
+    Message(Message const &message);
+    Message(const int& identifier, const string& title, const string& author, const string& body);
+    int getIdentifier();
+    string getTitle();
+    string getAuthor();
+    string getBody();
+    friend ostream& operator<<(ostream& os, const Message& message);
+    friend istream& operator>>(istream& is, Message& message);
+    string serialize();
+    static Message deserialize(string data);
+
+    // create operator < and > for sorting
+    bool operator<(const Message&) const;
+    
+};
+
+    Message::Message(Message const &message) {
+        this->identifier = message.identifier;
+        this->title = message.title;
+        this->author = message.author;
+        this->body = message.body;
+    }
+
+    Message::Message(const int& identifier, const string& title, const string& author, const string& body) {
         this->identifier = identifier;
         this->title = title;
         this->author = author;
         this->body = body;
     }
 
-    int getIdentifier() {
+    int Message::getIdentifier() {
         return identifier;
     }
 
-    string getTitle() {
+    string Message::getTitle() {
         return title;
     }
 
-    string getAuthor() {
+    string Message::getAuthor() {
         return author;
     }
 
-    string getBody() {
+    string Message::getBody() {
         return body;
     }
 
-    friend ostream& operator<<(ostream& os, const Message& message) {
-        os << "Message ID: " << message.identifier << endl;
+    ostream& operator<<(ostream& os, const Message& message) {
+        os << "Identifier: " << message.identifier << endl;
         os << "Title: " << message.title << endl;
         os << "Author: " << message.author << endl;
         os << "Body: " << message.body << endl;
         return os;
     }
 
-    friend istream& operator>>(istream& is, Message& message) {
-        cout << "Enter title: ";
+    istream& operator>>(istream& is, Message& message) {
+        cout << "Enter the title: ";
         is >> message.title;
-        cout << "Enter author: ";
+        cout << "Enter the author: ";
         is >> message.author;
-        cout << "Enter body: ";
+        cout << "Enter the body: ";
         is >> message.body;
         return is;
     }
 
-    // Function to serialize the message
-    string serialize() {
-        return to_string(identifier) + " |! " + title + " |! " + author + " |! " + body;
+    string Message::serialize() {
+        return to_string(identifier) + "," + title + "," + author + "," + body;
     }
 
-    // Function to deserialize the message
-    Message static deserialize(string data) {
-        int pos = data.find(" |! ");
-        int identifier = stoi(data.substr(0, pos));
-        data = data.substr(pos + 1);
-        pos = data.find(" |! ");
-        string title = data.substr(0, pos);
-        data = data.substr(pos + 1);
-        pos = data.find(" |! ");
-        string author = data.substr(0, pos);
-        string body = data.substr(pos + 1);
+    Message Message::deserialize(string data) {
+        int identifier = stoi(data.substr(0, data.find(",")));
+        data = data.substr(data.find(",") + 1);
+        string title = data.substr(0, data.find(","));
+        data = data.substr(data.find(",") + 1);
+        string author = data.substr(0, data.find(","));
+        data = data.substr(data.find(",") + 1);
+        string body = data;
         return Message(identifier, title, author, body);
     }
-};
+
+    bool Message::operator<(const Message& message) const {
+        return identifier < message.identifier;
+    }

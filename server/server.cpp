@@ -61,10 +61,7 @@ public:
             exit(1);
 }
 
-        if (bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
-            cerr << "Cannot bind socket\n";
-            exit(1);
-        }
+        bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
     }
 
     void start() {
@@ -88,6 +85,8 @@ public:
 };
 
 int main() {
+    printf("Server started\n");
     Server server = Server ();
     server.start();
+
 }
