@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 using namespace std;
 
 class User
@@ -15,23 +16,38 @@ public:
         this->salt = salt;
     }
 
-    string getUsername()
+    User(const User &u)
     {
+        this->username = u.username;
+        this->password = u.password;
+        this->mail = u.mail;
+        this->salt = u.salt;
+    }
+
+    string getUsername(){
         return username;
     }
 
-    string getPassword()
-    {
+    string getPassword(){
         return password;
     }
 
-    string getMail()
+    static User deserialize(string data)
     {
-        return mail;
-    }
-
-    string getSalt()
-    {
-        return salt;
+        string delimiter = " ";
+        size_t pos = 0;
+        string token;
+        string arr[4];
+        int i = 0;
+        while ((pos = data.find(delimiter)) != string::npos)
+        {
+            token = data.substr(0, pos);
+            arr[i] = token;
+            data.erase(0, pos + delimiter.length());
+            i++;
+        }
+        arr[i] = data;
+        User u(arr[0], arr[1], arr[2], arr[3]);
+        return u;
     }
 };

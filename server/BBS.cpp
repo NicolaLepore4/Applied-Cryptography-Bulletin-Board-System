@@ -15,6 +15,8 @@ private:
     unordered_map<int, Message> messages;
     string filenameMSG = "";
 
+    int retrieveLastId();
+
 public:
     // Constructor to load messages from file
     BBS(string filenameMSG);
@@ -72,12 +74,25 @@ BBS::BBS(string filenameMSG)
         if (messages.find(mid) != messages.end())
             return messages[mid];
         return Message(-1, "", "", "");
+}
+
+int BBS::retrieveLastId(){
+        // ordina il set dei messaggi e restituisci l'id dell'ultimo
+        ifstream file(filenameMSG);
+        string line;
+        int lastId = -1;
+        while (getline(file, line))
+        {
+            lastId = stoi(line);
+        }
+        file.close();
+        return lastId;
     }
 
     // Method to add a message to the BBS
     void BBS::Add(string title, string author, string body)
     {
-        int id = messages.size() + 1;
+        int id = retrieveLastId() + 1;
         Message m = Message(id, title, author, body);
         messages.insert({id, m});
         ofstream file = ofstream(filenameMSG, ios::app);
