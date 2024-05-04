@@ -3,3 +3,4 @@ nome_utente2 password2 mail2@mail.com sale02
 u 2 m@mail.com sale00
 aa 1234 aa@gmail.coms salt00
 fgh 123 as salt00
+pincopalla palla pincopalla@gmail.com salt00

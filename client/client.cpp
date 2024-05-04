@@ -82,12 +82,12 @@ ClientHandler::ClientHandler()
 
 void ClientHandler::handle()
 {
-    std::string command;
     while (true)
     {
         // differenzia se l'utente è loggato o meno per eseguire le operazioni
         // nel caso in cui l'utente è guest, può solo fare login o registrazione
         // altrimenti può fare l'add, la list e la get
+        std::string command = "";
         if (!isLogged)
         {
             std::cout << "Enter command: ";
@@ -111,7 +111,7 @@ void ClientHandler::handle()
             else if (command == "add" || command == "list" || command == "get" || command == "logout")
                 std::cout << "You need to login first\n";
             else
-                std::cout << "You entered an invalid command\n";
+                std::cout << "You entered an invalid command while not logged!\n";
         }
         else
         {
@@ -294,11 +294,11 @@ void ClientHandler::handleGet(int clientSocket)
         return;
     }
 
-    int msgId = 0;
+    string msgId = "";
     std::cout << "Insert the identifier of the message to search: ";
-    std::cin >> msgId;
+    std::getline(std::cin, msgId);
     // send the message id to the server
-    sendMsg(clientSocket, to_string(msgId).c_str());
+    sendMsg(clientSocket, msgId.c_str());
     // check if server response with a "ok" message otherwise return
     recvMsg(clientSocket, message);
     if (strcmp(message, "error") == 0)
@@ -311,15 +311,15 @@ void ClientHandler::handleGet(int clientSocket)
 
     // return the message from the server
     recvMsg(clientSocket, message);
-    std::cout << "message: " << message << std::endl;
     Message msg = Message(message);
+    sendMsg(clientSocket, "fine");
     if (msg.getTitle() == "" && msg.getBody() == "")
     {
         std::cout << "Message empty!" << std::endl;
         return;
     }
-    std::cout << msg << std::endl;
-    sendMsg(clientSocket, "fine");
+    std::cout << msg;
+    return;
 }
 void ClientHandler::handleAdd(int clientSocket)
 {

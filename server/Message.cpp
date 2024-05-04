@@ -45,7 +45,6 @@ public:
     // Constructor to deserialize data
     Message::Message(char* data) {
         string str(data);
-        cout<<str<<endl;
         int identifier = stoi(str.substr(0, str.find(",")));
         str = str.substr(str.find(",") + 1);
         string title = str.substr(0, str.find(","));
