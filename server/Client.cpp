@@ -26,4 +26,9 @@ public:
     {
         return user;
     }
+    // print the user
+    void printUser()
+    {
+        cout << user << endl;
+    }
 };
