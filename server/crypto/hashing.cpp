@@ -2,14 +2,17 @@
 #include <string>
 #include <openssl/evp.h> //for all other OpenSSL function calls
 #include <random>
-#include <openssl/crypto.h>
+#include <openssl/sha.h>
 
 using namespace std;
 
 #define SHA3_512_DIGEST_LENGTH 512
 
-
-// Funzione per generare un valore casuale (salt)
+/**
+ * Generates a random salt value.
+ *
+ * @return The generated salt value.
+ */
 int generateSalt()
 {
   std::random_device rd;
@@ -18,58 +21,74 @@ int generateSalt()
   return dis(gen);
 }
 
-// Funzione per effettuare l'hash di una stringa con salting
-
-std::string hashWithSalt(const std::string &password, int salt)
+/**
+ * Computes the SHA3-512 hash of the given input string.
+ *
+ * @param input The input string to be hashed.
+ * @return The SHA3-512 hash of the input string as a hexadecimal string.
+ */
+string computeSHA3_512Hash(const std::string &input)
 {
-  // Convertire la password e il salt in array di byte
-  unsigned char passwordBytes[password.size()];
-  std::copy(password.begin(), password.end(), passwordBytes);
+  // creation of the context used to calculate the hash
+  EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
 
-  unsigned char saltBytes[sizeof(salt)];
-  std::copy((unsigned char *)&salt, (unsigned char *)&salt + sizeof(salt), saltBytes);
+  const EVP_MD *md = EVP_sha3_512();
 
-  // Creare un digest SHA3
-  unsigned char digest[SHA3_512_DIGEST_LENGTH]; // Modifica la dimensione del digest
-  EVP_MD_CTX *mdctx;
-  const EVP_MD *md;
-  md = EVP_sha3_512();
-  mdctx = EVP_MD_CTX_new();
+  unsigned char hash[SHA512_DIGEST_LENGTH];
+  unsigned int hash_len;
+
   EVP_DigestInit_ex(mdctx, md, NULL);
-  EVP_DigestUpdate(mdctx, passwordBytes, password.size());
-  EVP_DigestFinal_ex(mdctx, digest, NULL);
+  EVP_DigestUpdate(mdctx, input.c_str(), input.length());
+  EVP_DigestFinal_ex(mdctx, hash, &hash_len);
+
   EVP_MD_CTX_free(mdctx);
 
-  // Concatenare digest e salt
-  unsigned char saltedDigest[SHA3_512_DIGEST_LENGTH + sizeof(salt)];
-  std::copy(digest, digest + SHA3_512_DIGEST_LENGTH, saltedDigest);
-  std::copy(saltBytes, saltBytes + sizeof(salt), saltedDigest + SHA3_512_DIGEST_LENGTH);
-
-  // Calcolare l'hash SHA3 del digest concatenato
-  unsigned char finalDigest[SHA3_512_DIGEST_LENGTH]; // Modifica la dimensione del digest
-  mdctx = EVP_MD_CTX_new();
-  EVP_DigestInit_ex(mdctx, md, NULL);
-  EVP_DigestUpdate(mdctx, saltedDigest, SHA3_512_DIGEST_LENGTH + sizeof(salt));
-  EVP_DigestFinal_ex(mdctx, finalDigest, NULL);
-  EVP_MD_CTX_free(mdctx);
-
-  // Convertire l'hash finale in stringa esadecimale
-  std::string hexHash;
-  for (int i = 0; i < SHA3_512_DIGEST_LENGTH; ++i)
+  // Convert hash to hex string
+  std::string hashStr;
+  char hex[3];
+  for (int i = 0; i < SHA512_DIGEST_LENGTH; ++i)
   {
-    char buf[3];
-    sprintf(buf, "%02x", finalDigest[i]);
-    hexHash += buf;
+    // convert the byte into a hex string
+    snprintf(hex, sizeof(hex), "%02x", hash[i]);
+    // append the hexadecimal into the result string
+    hashStr.append(hex);
   }
 
-  return hexHash;
+  return hashStr;
+}
+
+/**
+ * Computes the SHA3-512 hash of the given input concatenated with the salt.
+ *
+ * @param input The input string to be hashed.
+ * @param salt The salt string to be concatenated with the input
+ * @return The SHA3-512 hash of the input concatenated with the salt.
+ */
+string computeSHA3_512Hash(const std::string &input, const std::string &salt)
+{
+  std::string data = input + salt;
+  return computeSHA3_512Hash(data);
+}
+
+/**
+ * Computes the SHA3-512 hash of the given input concatenated with the salt
+ * @param input The input string to be hashed.
+ * @param salt The salt as integer value to be transformed into a string and then to be concatenanted with the input
+ * @return The SHA3-512 hash of the input concatenated with the salt.
+*/
+string computeSHA3_512Hash(const string &input, const int &salt)
+{
+  string data = input + to_string(salt);
+  return computeSHA3_512Hash(data);
 }
 
 int main()
 {
   string password = "password";
-  int salt = generateSalt();
-  string hashedPassword = hashWithSalt(password, 0);
-  cout << "Hashed password: " << hashedPassword << "\n";
+  int salt = (generateSalt());
+
+  cout << "Salt: " << salt << endl;
+
+  cout << "Original string: " << password + to_string(salt) << " hashed: " << computeSHA3_512Hash(password, salt) << endl;
   return 1;
 }
