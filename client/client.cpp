@@ -46,6 +46,8 @@ public:
     void handleGet(int clientSocket);
     void handleLogout();
     void handle();
+    bool handleExit(int clientSocket);
+    bool handleQuit(int clientSocket, bool isLogged);
     ClientHandler();
 };
 
@@ -83,9 +85,23 @@ ClientHandler::ClientHandler()
     }
 }
 
+bool ClientHandler::handleExit(int clientSocket)
+{
+    cout << "Closing  connection with server...." << endl;
+    exit(0);
+}
+
+bool ClientHandler::handleQuit(int clientSocket, bool isLogged)
+{
+    if (isLogged)
+        handleLogout();
+    return handleExit(clientSocket);
+}
+
 void ClientHandler::handle()
 {
-    while (true)
+    bool isExited = false;
+    while (!isExited)
     {
         // differenzia se l'utente è loggato o meno per eseguire le operazioni
         // nel caso in cui l'utente è guest, può solo fare login o registrazione
@@ -113,6 +129,11 @@ void ClientHandler::handle()
             }
             else if (command == "add" || command == "list" || command == "get" || command == "logout")
                 cout << "You need to login first\n";
+                else if (command == "exit" || command == "quit")
+                    isExited = handleQuit(clientSocket, isLogged);
+                else if (command == "closing")
+                    isExited = handleExit(clientSocket);
+
             else
                 cout << "You entered an invalid command while not logged!\n";
         }
@@ -132,6 +153,11 @@ void ClientHandler::handle()
                 cout << "You are already logged in\n";
             else if (command == "registration")
                 cout << "You are already logged in\n";
+                else if (command == "exit" || command == "quit")
+                    isExited = handleQuit(clientSocket, isLogged);
+                else if (command == "closing")
+                    isExited = handleExit(clientSocket);
+
             else
                 cout << "You entered an invalid command\n";
         }
