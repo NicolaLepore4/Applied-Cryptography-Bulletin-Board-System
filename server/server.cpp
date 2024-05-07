@@ -45,43 +45,49 @@ public:
     {
         int size = 1024;
         send(clientSocket, msg, size, 0);
-        cout<<"Sending message: "<<msg<< " with size: "<<size<<endl;
+        cout << "Sending message: " << msg << " with size: " << size << endl;
     }
 
     void recvMsg(int clientSocket, char *msg)
     {
         int size = 1024;
         read(clientSocket, msg, size);
-        cout<<"Received message: "<<msg<<endl;
+        cout << "Received message: " << msg << endl;
     }
 };
 
 Server::Server()
 {
-    sockaddr_in serverAddress{};
-    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSocket < 0)
+    try
     {
-        cerr << "Cannot open socket\n";
-        exit(1);
-    }
+        sockaddr_in serverAddress{};
+        serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+        if (serverSocket < 0)
+        {
+            throw runtime_error("Cannot open socket");
+        }
 
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(port);
-    if (inet_pton(AF_INET, ip.c_str(), &serverAddress.sin_addr) <= 0)
+        serverAddress.sin_family = AF_INET;
+        serverAddress.sin_port = htons(port);
+        if (inet_pton(AF_INET, ip.c_str(), &serverAddress.sin_addr) <= 0)
+        {
+            if (errno == EAFNOSUPPORT)
+            {
+                throw runtime_error("Address family not supported");
+            }
+            else
+            {
+                throw runtime_error("Invalid IP address or other error:\n");
+            }
+        }
+
+        bind(serverSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress));
+    }
+    catch (exception e)
     {
-        if (errno == EAFNOSUPPORT)
-        {
-            cerr << "Invalid address family\n";
-        }
-        else
-        {
-            cerr << "Invalid IP address or other error:\n";
-        }
-        exit(1);
+        cout << "Errore: " << e.what() << endl;
+        exit(-1);
     }
-
-    bind(serverSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress));
 }
 
 void Server::handle(int clientSocket)
@@ -104,7 +110,7 @@ void Server::handle(int clientSocket)
         else if (strncmp(command, "list", 4) == 0 && isLogged)
         {
             // prendi il numero di messaggi da visualizzare dopo la parola list in un buffer di 1024
-            int numMessages = atoi(command+4);
+            int numMessages = atoi(command + 4);
             handleListMessages(clientSocket, numMessages);
         }
         else if (strcmp(command, "add") == 0 && isLogged)
@@ -183,22 +189,28 @@ void Server::start()
 {
     try
     {
+        // 1. Listen for incoming connections
         listen(serverSocket, MAX_CONNECTIONS);
-
+        // 2. Infinite loop to handle connections
         while (true)
         {
+            // 2.1. Initialize client address structure
             sockaddr_in clientAddress{};
             socklen_t clientLen = sizeof(clientAddress);
+            // 2.2. Accept a new client connection
             int clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddress, &clientLen);
-
+            // 2.3. Error handling for failed connection acceptance
             if (clientSocket < 0)
             {
                 cerr << "Cannot accept connection\n";
                 continue;
             }
+            // 2.4. Successful connection established
             printf("A client connected\n");
-            handle(clientSocket);
-            handleLogout(*this, clientSocket);
+            // 2.5. Handle the client connection (likely in a separate thread or function)
+            std::thread t1(&Server::handle, this, clientSocket);
+            // handle(clientSocket);
+            t1.detach();
         }
     }
     catch (exception e)
@@ -210,7 +222,6 @@ void Server::start()
 Message Server::findMsgOnFile(char *identifier)
 {
     int id = atoi(identifier);
-    cout << "id: " << id << "\n";
     return board.Get(id);
 }
 
@@ -229,9 +240,7 @@ void Server::handleGetMessages(int clientSocket)
         return;
     }
     else
-    {
         sendMsg(clientSocket, "ok");
-    }
 
     recvMsg(clientSocket, message);
 
@@ -276,14 +285,9 @@ void Server::handleAddMessages(int clientSocket)
         sendMsg(clientSocket, "ricevuto_nota");
         recvMsg(clientSocket, message);
         if (strcmp(message, "fine") == 0)
-        {
             return;
-        }
         else
-        {
-            sendMsg(clientSocket, "error");
-            return;
-        }
+            throw new exception();
     }
     catch (exception e)
     {
@@ -294,17 +298,16 @@ void Server::handleAddMessages(int clientSocket)
 
 void Server::handleListMessages(int clientSocket, int numMsg)
 {
-    char message[1024] = "";
-    sendMsg(clientSocket, "ricevuto_list");
-    recvMsg(clientSocket, message);
-    if (strcmp(message, "ok") != 0)
+    try
     {
-        sendMsg(clientSocket, "error");
-        return;
-    }
-    else
-    {
-        try
+        char message[1024] = "";
+        sendMsg(clientSocket, "ricevuto_list");
+        recvMsg(clientSocket, message);
+        if (strcmp(message, "ok") != 0)
+        {
+            throw new exception();
+        }
+        else
         {
             if (board.size() <= numMsg)
             {
@@ -315,7 +318,7 @@ void Server::handleListMessages(int clientSocket, int numMsg)
             char n_elements[1024] = "";
             for (auto msg : messages)
             {
-                //aggiungi al buffer n_elements il messaggio serializzato
+                // aggiungi al buffer n_elements il messaggio serializzato
                 strcat(n_elements, msg.serialize().c_str());
                 strcat(n_elements, "\n");
             }
@@ -327,19 +330,15 @@ void Server::handleListMessages(int clientSocket, int numMsg)
                 return;
             }
             else
-            {
-                sendMsg(clientSocket, "error");
-                return;
-            }
-        }
-        catch (exception e)
-        {
-            sendMsg(clientSocket, "error");
-            return;
+                throw new exception();
         }
     }
+    catch (exception e)
+    {
+        sendMsg(clientSocket, "error");
+        return;
+    }
 }
-
 void Server::handleRegistration(int clientSocket)
 {
     char message[1024] = "";

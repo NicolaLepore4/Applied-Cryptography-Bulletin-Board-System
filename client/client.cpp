@@ -11,15 +11,17 @@
 
 #include "../server/Message.cpp"
 
+using namespace std;
+
 const int port = 12345;
-const std::string ip = "127.0.0.1";
+const string ip = "127.0.0.1";
 
 class ClientHandler
 {
 private:
     int clientSocket;
     bool isLogged = false;
-    std::string username;
+    string username;
 
     void sendMsg(int clientSocket, const char *msg)
     {
@@ -31,7 +33,9 @@ private:
     {
         int size = 1024;
         read(clientSocket, msg, size);
-        cout<<"__________________________________"<<endl<<"Received message: "<<msg<<endl<<"__________________________________"<<endl;
+        cout << "__________________________________" << endl
+             << "Received message: " << msg << endl
+             << "__________________________________" << endl;
     }
 
 public:
@@ -47,37 +51,36 @@ public:
 
 ClientHandler::ClientHandler()
 {
-    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSocket < 0)
+    try
     {
-        std::cerr << "Cannot open socket\n";
-        exit(1);
-    }
-
-    sockaddr_in serverAddress{};
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(port);
-    if (inet_pton(AF_INET, ip.c_str(), &serverAddress.sin_addr) <= 0)
-    {
-        if (errno == EAFNOSUPPORT)
+        int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+        if (serverSocket < 0)
         {
-            std::cerr << "Invalid address family\n";
+            throw runtime_error("Cannot create socket");
         }
-        else
-        {
-            std::cerr << "Invalid IP address or other error:\n";
-        }
-        exit(1);
-    }
 
-    if (connect(serverSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0)
-    {
-        std::cerr << "Cannot connect to server\n";
-        exit(1);
+        sockaddr_in serverAddress{};
+        serverAddress.sin_family = AF_INET;
+        serverAddress.sin_port = htons(port);
+        if (inet_pton(AF_INET, ip.c_str(), &serverAddress.sin_addr) <= 0)
+        {
+            if (errno == EAFNOSUPPORT)
+                throw runtime_error("Address family not supported");
+            else
+                throw runtime_error("Invalid address");
+        }
+
+        if (connect(serverSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0)
+            throw runtime_error("Cannot connect to server");
+        cerr << "connected to server\n";
+        clientSocket = serverSocket;
+        handle();
     }
-    std::cerr << "connect to server\n";
-    clientSocket = serverSocket;
-    handle();
+    catch (exception e)
+    {
+        cerr << e.what() << endl;
+        exit(-1);
+    }
 }
 
 void ClientHandler::handle()
@@ -87,36 +90,36 @@ void ClientHandler::handle()
         // differenzia se l'utente è loggato o meno per eseguire le operazioni
         // nel caso in cui l'utente è guest, può solo fare login o registrazione
         // altrimenti può fare l'add, la list e la get
-        std::string command = "";
+        string command = "";
         if (!isLogged)
         {
-            std::cout << "Enter command: ";
-            std::getline(std::cin, command);
+            cout << "Enter command: ";
+            getline(cin, command);
             if (command == "login")
             {
                 isLogged = handleLogin(clientSocket);
                 if (isLogged)
-                    std::cout << "Login successful\n";
+                    cout << "Login successful\n";
                 else
-                    std::cout << "Login failed\n";
+                    cout << "Login failed\n";
             }
             else if (command == "registration")
             {
                 isLogged = handleRegistration();
                 if (isLogged)
-                    std::cout << "Registration successful\n";
+                    cout << "Registration successful\n";
                 else
-                    std::cout << "Registration failed\n";
+                    cout << "Registration failed\n";
             }
             else if (command == "add" || command == "list" || command == "get" || command == "logout")
-                std::cout << "You need to login first\n";
+                cout << "You need to login first\n";
             else
-                std::cout << "You entered an invalid command while not logged!\n";
+                cout << "You entered an invalid command while not logged!\n";
         }
         else
         {
-            std::cout << "Enter command: ";
-            std::getline(std::cin, command);
+            cout << "Enter command: ";
+            getline(cin, command);
             if (command == "add")
                 handleAdd(clientSocket);
             else if (command == "list")
@@ -126,46 +129,46 @@ void ClientHandler::handle()
             else if (command == "logout")
                 handleLogout();
             else if (command == "login")
-                std::cout << "You are already logged in\n";
+                cout << "You are already logged in\n";
             else if (command == "registration")
-                std::cout << "You are already logged in\n";
+                cout << "You are already logged in\n";
             else
-                std::cout << "You entered an invalid command\n";
+                cout << "You entered an invalid command\n";
         }
     }
 }
 
 bool ClientHandler::handleRegistration()
 {
-    std::string message = "registration";
+    string message = "registration";
     sendMsg(clientSocket, message.c_str());
     char response[1024] = "";
     recvMsg(clientSocket, response);
     if (strcmp(response, "ricevuto_registration") != 0)
         return false;
 
-    std::string username;
-    std::string email;
-    std::string password;
+    string username;
+    string email;
+    string password;
 
-    std::cout << "Enter username: ";
-    std::getline(std::cin, username);
+    cout << "Enter username: ";
+    getline(cin, username);
     sendMsg(clientSocket, username.c_str());
     recvMsg(clientSocket, (response));
 
     if (strcmp(response, "ricevuto_username") != 0)
         return false;
 
-    std::cout << "Enter email: ";
-    std::getline(std::cin, email);
+    cout << "Enter email: ";
+    getline(cin, email);
     sendMsg(clientSocket, email.c_str());
     recvMsg(clientSocket, (response));
 
     if (strcmp(response, "ricevuto_email") != 0)
         return false;
 
-    std::cout << "Enter password: ";
-    std::getline(std::cin, password);
+    cout << "Enter password: ";
+    getline(cin, password);
     sendMsg(clientSocket, password.c_str());
     recvMsg(clientSocket, (response));
 
@@ -181,24 +184,24 @@ bool ClientHandler::handleRegistration()
 
 void ClientHandler::handleList(int clientSocket)
 {
-    std::string number;
+    string number;
     int n;
     bool validInput = false;
     while (!validInput)
     {
-        std::cout << "How many elements: ";
-        std::getline(std::cin, number);
+        cout << "How many elements: ";
+        getline(cin, number);
         try
         {
-            n = std::stoi(number);
+            n = stoi(number);
             validInput = true;
         }
-        catch (const std::exception &e)
+        catch (const exception &e)
         {
-            std::cout << "Invalid input. Please enter an integer.\n";
+            cout << "Invalid input. Please enter an integer.\n";
         }
     }
-    std::string msg = "list " + std::to_string(n);
+    string msg = "list " + to_string(n);
     sendMsg(clientSocket, msg.c_str());
 
     char message[1024] = "";
@@ -206,16 +209,16 @@ void ClientHandler::handleList(int clientSocket)
     // il server conferma la ricezione del comando
     if (strcmp(message, "ricevuto_list") != 0)
     {
-        std::cout << "ERROR IN NOTA\n";
+        cout << "ERROR IN NOTA\n";
         return;
     }
     else
     {
-        std::cout << "comando ricevuto\n";
+        cout << "comando ricevuto\n";
         sendMsg(clientSocket, "ok");
         recvMsg(clientSocket, (message));
         // trasforma la stringa nei messaggi e stampali
-        std::cout << message << std::endl;
+        cout << message << endl;
         ///
         sendMsg(clientSocket, "fine");
     }
@@ -230,13 +233,11 @@ void ClientHandler::handleLogout()
     recvMsg(clientSocket, (message));
     if (strcmp(message, "ricevuto_logout") != 0)
     {
-        std::cout << "ERROR IN LOGOUT\n";
+        cout << "ERROR IN LOGOUT\n";
         return;
     }
     else
-    {
-        std::cout << "Logout successful\n";
-    }
+        cout << "Logout successful\n";
 
     isLogged = false;
 }
@@ -251,16 +252,16 @@ bool ClientHandler::handleLogin(int clientSocket)
     // check if server response with a "ricevuto_password" message otherwise return false
     // if so then return authenticated = true
     // else return authenticated = false
-    std::cerr << "handleLogin\n";
+    cerr << "handleLogin\n";
     sendMsg(clientSocket, "login");
     char response[1024] = "";
     recvMsg(clientSocket, (response));
     if (strcmp(response, "ricevuto_login") != 0)
         return false;
-    std::string username;
-    std::string password;
-    std::cout << "Enter username: ";
-    std::getline(std::cin, username);
+    string username;
+    string password;
+    cout << "Enter username: ";
+    getline(cin, username);
 
     sendMsg(clientSocket, username.c_str());
 
@@ -268,8 +269,8 @@ bool ClientHandler::handleLogin(int clientSocket)
     if (strcmp(response, "ricevuto_username") != 0)
         return false;
 
-    std::cout << "Enter password: ";
-    std::getline(std::cin, password);
+    cout << "Enter password: ";
+    getline(cin, password);
 
     sendMsg(clientSocket, password.c_str());
     recvMsg(clientSocket, (response));
@@ -290,20 +291,20 @@ void ClientHandler::handleGet(int clientSocket)
     recvMsg(clientSocket, message);
     if (strcmp(message, "ricevuto_get") != 0)
     {
-        std::cout << "ERROR IN GET\n";
+        cout << "ERROR IN GET\n";
         return;
     }
 
     string msgId = "";
-    std::cout << "Insert the identifier of the message to search: ";
-    std::getline(std::cin, msgId);
+    cout << "Insert the identifier of the message to search: ";
+    getline(cin, msgId);
     // send the message id to the server
     sendMsg(clientSocket, msgId.c_str());
     // check if server response with a "ok" message otherwise return
     recvMsg(clientSocket, message);
     if (strcmp(message, "error") == 0)
     {
-        std::cout << "Message not found!" << std::endl;
+        cout << "Message not found!" << endl;
         return;
     }
 
@@ -315,10 +316,10 @@ void ClientHandler::handleGet(int clientSocket)
     sendMsg(clientSocket, "fine");
     if (msg.getTitle() == "" && msg.getBody() == "")
     {
-        std::cout << "Message empty!" << std::endl;
+        cout << "Message empty!" << endl;
         return;
     }
-    std::cout << msg;
+    cout << msg;
     return;
 }
 void ClientHandler::handleAdd(int clientSocket)
@@ -330,14 +331,14 @@ void ClientHandler::handleAdd(int clientSocket)
     if (strcmp(message, "ricevuto_add") == 0)
     {
         // crea la nota da inviare con titolo e body
-        std::string note;
-        std::string temp;
-        std::cout << "Create note: ";
-        std::cout << "Insert the title: ";
-        std::getline(std::cin, temp);
+        string note;
+        string temp;
+        cout << "Create note: ";
+        cout << "Insert the title: ";
+        getline(cin, temp);
         note += "title: " + temp + "\n";
-        std::cout << "Insert the text: ";
-        std::getline(std::cin, temp);
+        cout << "Insert the text: ";
+        getline(cin, temp);
         note += "body: " + temp + "\n";
         //
         // invio la nota
@@ -346,21 +347,18 @@ void ClientHandler::handleAdd(int clientSocket)
         recvMsg(clientSocket, message);
         if (strcmp(message, "ricevuto_nota") != 0)
         {
-            std::cout << "ERROR IN NOTA\n";
+            cout << "ERROR IN NOTA\n";
             return;
         }
         else if (strcmp(message, "ricevuto_nota") == 0)
         {
-            std::cout << "NOTA SALVATA CON SUCCESSO\n";
+            cout << "NOTA SALVATA CON SUCCESSO\n";
             sendMsg(clientSocket, "fine");
             return;
         }
     }
-    else
-    { // se il comando non è stato accettato dal server
-        std::cout << "ERROR IN COMMAND\n";
-        return;
-    }
+    else// se il comando non è stato accettato dal server
+        cout << "ERROR IN COMMAND\n";
 }
 
 int main()
