@@ -26,16 +26,23 @@ private:
     void sendMsg(int clientSocket, const char *msg)
     {
         int size = 1024;
-        send(clientSocket, msg, size, 0);
+        int bytes_sent = send(clientSocket, msg, size, 0);
+        if (bytes_sent != -1)
+            throw runtime_error("Cannot send message");
     }
 
     void recvMsg(int clientSocket, char *msg)
     {
         int size = 1024;
-        read(clientSocket, msg, size);
-        cout << "__________________________________" << endl
-             << "Received message: " << msg << endl
-             << "__________________________________" << endl;
+        int bytes_received = read(clientSocket, msg, size);
+        if (bytes_received < 0)
+            throw runtime_error("Cannot receive message");
+        else if (bytes_received == 0)
+            throw runtime_error("Connection closed by server");
+        else
+            cout << "__________________________________" << endl
+                 << "Received message: " << msg << endl
+                 << "__________________________________" << endl;
     }
 
 public:
@@ -129,10 +136,10 @@ void ClientHandler::handle()
             }
             else if (command == "add" || command == "list" || command == "get" || command == "logout")
                 cout << "You need to login first\n";
-                else if (command == "exit" || command == "quit")
-                    isExited = handleQuit(clientSocket, isLogged);
-                else if (command == "closing")
-                    isExited = handleExit(clientSocket);
+            else if (command == "exit" || command == "quit")
+                isExited = handleQuit(clientSocket, isLogged);
+            else if (command == "closing")
+                isExited = handleExit(clientSocket);
 
             else
                 cout << "You entered an invalid command while not logged!\n";
@@ -153,15 +160,16 @@ void ClientHandler::handle()
                 cout << "You are already logged in\n";
             else if (command == "registration")
                 cout << "You are already logged in\n";
-                else if (command == "exit" || command == "quit")
-                    isExited = handleQuit(clientSocket, isLogged);
-                else if (command == "closing")
-                    isExited = handleExit(clientSocket);
+            else if (command == "exit" || command == "quit")
+                isExited = handleQuit(clientSocket, isLogged);
+            else if (command == "closing")
+                isExited = handleExit(clientSocket);
 
             else
                 cout << "You entered an invalid command\n";
         }
     }
+    close(clientSocket);
 }
 
 bool ClientHandler::handleRegistration()
@@ -383,7 +391,7 @@ void ClientHandler::handleAdd(int clientSocket)
             return;
         }
     }
-    else// se il comando non è stato accettato dal server
+    else // se il comando non è stato accettato dal server
         cout << "ERROR IN COMMAND\n";
 }
 
