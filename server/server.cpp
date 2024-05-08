@@ -5,6 +5,7 @@
 #include <sstream>
 #include <list>
 #include <cstring>
+#include <vector>
 
 #include <thread>
 #include <netinet/in.h>
@@ -25,6 +26,7 @@ private:
     int serverSocket;
     BBS board = BBS(filenameMSG);
     list<Client> users = list<Client>();
+
     bool findUserOnFile(const char *, const char *); // check if user exists in file and if password is correct
     pair<string, string> extractNoteDetails(const std::string &note);
     Message findMsgOnFile(char *);
@@ -36,7 +38,7 @@ public:
     void handleRegistration(int clientSocket);
     void handleGetMessages(int clientSocket);
     void handleAddMessages(int clientSocket);
-    void handleListMessages(int clientSocket, int numMsg);
+    void handleListMessages(int clientSocket, int start, int end);
 
     Server();
     void start();
@@ -44,14 +46,24 @@ public:
     void sendMsg(int clientSocket, const char *msg)
     {
         int size = 1024;
-        send(clientSocket, msg, size, 0);
+        if (send(clientSocket, msg, size, 0) == -1){
+            perror("send");
+            close(clientSocket);
+            throw runtime_error("Client closed connection");
+        };
         cout << "Sending message: " << msg << " with size: " << size << endl;
     }
 
     void recvMsg(int clientSocket, char *msg)
     {
         int size = 1024;
-        read(clientSocket, msg, size);
+        int n = read(clientSocket, msg, size);
+        if (n <= 0) {
+            // Read error or client closed connection, so close our end and return
+            perror("read");
+            close(clientSocket);
+            throw runtime_error("Client closed connection");
+        }
         cout << "Received message: " << msg << endl;
     }
 };
@@ -92,43 +104,51 @@ Server::Server()
 
 void Server::handle(int clientSocket)
 {
-    bool isLogged = false;
-    char command[1024] = "";
-    while (true)
+    try
     {
-        recvMsg(clientSocket, command);
-        cout << "Received command: " << command << "\n";
-        if (strcmp(command, "login") == 0)
+        bool isLogged = false;
+        char command[1024] = "";
+        while (true)
         {
-            cout << "login in esecuzione" << command << "\n";
-            isLogged = handleLogin(clientSocket);
+            recvMsg(clientSocket, command);
+            if (strcmp(command, "login") == 0)
+            {
+                cout << "login in esecuzione" << command << "\n";
+                isLogged = handleLogin(clientSocket);
+            }
+            else if (strcmp(command, "registration") == 0)
+            {
+                handleRegistration(clientSocket);
+            }
+            else if (strncmp(command, "list", 4) == 0 && isLogged)
+            {
+                // prendi i due numeri di messaggi da visualizzare dopo la parola list in un buffer di 1024 che rappresentano l'inizio e la fine.
+                int start, end;
+                sscanf(command + 4, "%d %d", &start, &end);
+                handleListMessages(clientSocket, start, end);
+            }
+            else if (strcmp(command, "add") == 0 && isLogged)
+            {
+                handleAddMessages(clientSocket);
+            }
+            else if (strcmp(command, "get") == 0 && isLogged)
+            {
+                handleGetMessages(clientSocket);
+            }
+            else if (strcmp(command, "logout") == 0 && isLogged)
+            {
+                handleLogout(*this, clientSocket);
+            }
+            else
+            {
+                sendMsg(clientSocket, "error_wrong_command");
+            }
         }
-        else if (strcmp(command, "registration") == 0)
-        {
-            handleRegistration(clientSocket);
-        }
-        else if (strncmp(command, "list", 4) == 0 && isLogged)
-        {
-            // prendi il numero di messaggi da visualizzare dopo la parola list in un buffer di 1024
-            int numMessages = atoi(command + 4);
-            handleListMessages(clientSocket, numMessages);
-        }
-        else if (strcmp(command, "add") == 0 && isLogged)
-        {
-            handleAddMessages(clientSocket);
-        }
-        else if (strcmp(command, "get") == 0 && isLogged)
-        {
-            handleGetMessages(clientSocket);
-        }
-        else if (strcmp(command, "logout") == 0 && isLogged)
-        {
-            handleLogout(*this, clientSocket);
-        }
-        else
-        {
-            sendMsg(clientSocket, "error_wrong_command");
-        }
+    }
+    catch (runtime_error e)
+    {
+        close(clientSocket);
+        return;
     }
 }
 bool Server::findUserOnFile(const char *username, const char *password)
@@ -185,10 +205,35 @@ void Server::handleLogout(Server s, int clientSocket)
     sendMsg(clientSocket, "ricevuto_logout");
 }
 
+// #include "./crypto/Key_exchange.cpp"
+
+// void secure_connection(int clientSocket){
+//     auto p = Key_Exchange.getP();
+//     auto g = Key_Exchange.getG();
+//     auto publicKey = Key_Exchange.getPublicKey();
+//     send(clientSocket, &p, sizeof(p), 0);
+//     send(clientSocket, &g, sizeof(g), 0);
+//     send(clientSocket, &publicKey, sizeof(publicKey), 0);
+
+//     char recv_pub_key_client[1024] = "";
+//     recv(clientSocket, recv_pub_key_client, sizeof(recv_pub_key_client), 0);
+//     auto client_secret = Key_Exchange.setClientPublicKey(recv_pub_key_client);
+
+//     cout << "Client secret: " << client_secret << endl;
+//     string msg_c = "Connection established";
+
+//     for (int i = 0; i < msg_c.size(); i++)
+//         msg_c[i] = msg_c[i] ^ client_secret;
+
+//     cout<<"Encrypted message: "<<msg_c<<endl;
+
+// }
+
 void Server::start()
 {
     try
     {
+        vector<thread> threads;
         // 1. Listen for incoming connections
         listen(serverSocket, MAX_CONNECTIONS);
         // 2. Infinite loop to handle connections
@@ -206,19 +251,24 @@ void Server::start()
                 continue;
             }
             // 2.4. Successful connection established
-            printf("A client connected\n");
-            // 2.5. Handle the client connection (likely in a separate thread or function)
-            std::thread t1(&Server::handle, this, clientSocket);
-            // handle(clientSocket);
-            t1.detach();
+                threads.push_back(thread(&Server::handle, this, clientSocket));
+                // OR (if you need to check for thread creation errors)
+                if (!threads.back().joinable()) {
+                // Handle thread creation error (e.g., insufficient resources)
+                cerr << "Error creating thread\n";
+                continue;
+                } 
         }
+        // std::thread t1(&Server::handle, this, clientSocket);
+        //  handle(clientSocket);
+        // t1.detach();
     }
-    catch (exception e)
+    catch (runtime_error e)
     {
         cout << "Errore: " << e.what() << endl;
-        exit(-1);
     }
 }
+
 Message Server::findMsgOnFile(char *identifier)
 {
     int id = atoi(identifier);
@@ -296,7 +346,7 @@ void Server::handleAddMessages(int clientSocket)
     }
 }
 
-void Server::handleListMessages(int clientSocket, int numMsg)
+void Server::handleListMessages(int clientSocket, int start, int end)
 {
     try
     {
@@ -309,20 +359,31 @@ void Server::handleListMessages(int clientSocket, int numMsg)
         }
         else
         {
-            if (board.size() <= numMsg)
+            if (board.size() <= end)
             {
-                numMsg = board.size();
+                end = board.retrieveLastId();
             }
             // restituisce gli ultimi numMsg all'interno di BBS
-            set<Message> messages = board.List(numMsg);
+            set<Message> messages = board.List(start, end);
             char n_elements[1024] = "";
             for (auto msg : messages)
             {
-                // aggiungi al buffer n_elements il messaggio serializzato
-                strcat(n_elements, msg.serialize().c_str());
-                strcat(n_elements, "\n");
+                // Serialize the message and send it
+                string serializedMsg = msg.serialize_for_list() + "\n";
+                sendMsg(clientSocket, serializedMsg.c_str());
+                recvMsg(clientSocket, message);
+                if (strcmp(message, "ok") == 0)
+                {
+                    continue;
+                }
+                else
+                {
+                    throw new exception();
+                }
             }
-            sendMsg(clientSocket, n_elements);
+
+            // Send "stop" as the last message
+            sendMsg(clientSocket, "stop");
             recvMsg(clientSocket, message);
             if (strcmp(message, "fine") == 0)
             {

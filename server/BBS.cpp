@@ -15,14 +15,14 @@ private:
     unordered_map<int, Message> messages;
     string filenameMSG = "";
 
-    int retrieveLastId();
+    
 
 public:
     // Constructor to load messages from file
     BBS(string filenameMSG);
 
     // Method to list the latest n available messages in the BBS
-    set<Message> List(int n);
+    set<Message> List(int start, int end);
 
     // Method to download a message specified by message identifier
     Message Get(int mid);
@@ -32,6 +32,8 @@ public:
 
     // method to return the size of the BBS
     int size();
+
+    int retrieveLastId();
 };
 
 BBS::BBS(string filenameMSG)
@@ -55,21 +57,18 @@ BBS::BBS(string filenameMSG)
     cout << "BBS loaded from file " << messages.size() << " messages" << endl;
 }
 // Method to list the latest n available messages in the BBS
-set<Message> BBS::List(int n)
+set<Message> BBS::List(int start, int end)
 {
-    // return set<Message>(messages.begin(), messages.end());
-    // TODO: implementare un metodo per restituire gli ultimi n messaggi, se n è maggiore della dimensione, resituisce tutti i messaggi
-    n = n > messages.size() ? messages.size() : n;
-    set<Message> lastN;
+    set<Message> selectedMessages;
     for (auto it = messages.begin(); it != messages.end(); ++it)
     {
-        // Aggiungere il messaggio all'insieme temporaneo fino a quando non vengono raggiunti n messaggi
-        if (lastN.size() < n)
+        // Check if the message ID is within the range [start, end]
+        if (it->second.getIdentifier() >= start && it->second.getIdentifier() <= end)
         {
-            lastN.insert(it->second);
+            selectedMessages.insert(it->second);
         }
     }
-    return lastN;
+    return selectedMessages;
 }
 
 // Method to download a message specified by message identifier

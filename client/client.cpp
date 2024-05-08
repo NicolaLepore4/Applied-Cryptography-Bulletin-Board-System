@@ -26,21 +26,14 @@ private:
     void sendMsg(int clientSocket, const char *msg)
     {
         int size = 1024;
-        int bytes_sent = send(clientSocket, msg, size, 0);
-        if (bytes_sent != -1)
-            throw runtime_error("Cannot send message");
+        send(clientSocket, msg, size, 0);
     }
 
     void recvMsg(int clientSocket, char *msg)
     {
         int size = 1024;
-        int bytes_received = read(clientSocket, msg, size);
-        if (bytes_received < 0)
-            throw runtime_error("Cannot receive message");
-        else if (bytes_received == 0)
-            throw runtime_error("Connection closed by server");
-        else
-            cout << "__________________________________" << endl
+        read(clientSocket, msg, size);
+        cout << "__________________________________" << endl
                  << "Received message: " << msg << endl
                  << "__________________________________" << endl;
     }
@@ -219,23 +212,37 @@ bool ClientHandler::handleRegistration()
 void ClientHandler::handleList(int clientSocket)
 {
     string number;
-    int n;
+    int start;
+    int end;
     bool validInput = false;
     while (!validInput)
     {
-        cout << "How many elements: ";
+        cout << "Element from: ";
         getline(cin, number);
         try
         {
-            n = stoi(number);
+            start = stoi(number);
             validInput = true;
         }
         catch (const exception &e)
         {
             cout << "Invalid input. Please enter an integer.\n";
+            validInput = false;
+        }
+        cout << "to: ";
+        getline(cin, number);
+        try
+        {
+            end = stoi(number);
+            validInput = true;
+        }
+        catch (const exception &e)
+        {
+            cout << "Invalid input. Please enter an integer.\n";
+            validInput = false;
         }
     }
-    string msg = "list " + to_string(n);
+    string msg = "list " + to_string(start) + " " + to_string(end);
     sendMsg(clientSocket, msg.c_str());
 
     char message[1024] = "";
@@ -250,10 +257,18 @@ void ClientHandler::handleList(int clientSocket)
     {
         cout << "comando ricevuto\n";
         sendMsg(clientSocket, "ok");
-        recvMsg(clientSocket, (message));
-        // trasforma la stringa nei messaggi e stampali
-        cout << message << endl;
-        ///
+        while (true)
+        {
+            memset(message, 0, sizeof(message));
+            recvMsg(clientSocket, message);
+            if (strcmp(message, "stop") == 0)
+            {
+                break;
+            }else{
+                cout << message << endl;
+                sendMsg(clientSocket, "ok");
+            }
+        }
         sendMsg(clientSocket, "fine");
     }
 }

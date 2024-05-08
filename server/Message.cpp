@@ -20,6 +20,7 @@ public:
     friend ostream& operator<<(ostream& os, const Message& message);
     friend istream& operator>>(istream& is, Message& message);
     string serialize();
+    string serialize_for_list();
     static Message deserialize(string data);
 
     // create operator < and > for sorting
@@ -97,6 +98,9 @@ public:
     // Serialize and deserialize functions
     string Message::serialize() {
         return to_string(identifier) + "," + title + "," + author + "," + body;
+    }
+    string Message::serialize_for_list() {
+        return to_string(identifier) + "," + title + "," + author;
     }
 
     Message Message::deserialize(string data) {
