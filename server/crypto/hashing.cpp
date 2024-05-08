@@ -81,14 +81,3 @@ string computeSHA3_512Hash(const string &input, const int &salt)
   string data = input + to_string(salt);
   return computeSHA3_512Hash(data);
 }
-
-int main()
-{
-  string password = "password";
-  int salt = (generateSalt());
-
-  cout << "Salt: " << salt << endl;
-
-  cout << "Original string: " << password + to_string(salt) << " hashed: " << computeSHA3_512Hash(password, salt) << endl;
-  return 1;
-}

@@ -1,12 +1,13 @@
 #include <iostream>
 #include <string>
+#include "crypto/hashing.cpp"
+
 using namespace std;
 
 class User
 {
 private:
-    string username, mail, password, salt;
-    string generateSalt();
+    string salt,username, mail, password;
 
 public:
     string serialize();
@@ -19,10 +20,11 @@ public:
 
     User(string name, string password, string mail)
     {
+        this->salt = to_string(generateSalt());
         this->username = name;
-        this->password = password;
+        this->password = computeSHA3_512Hash(password, salt);
         this->mail = mail;
-        this->salt = generateSalt();
+        
     }
 
     User(string name, string password, string mail, string salt)
@@ -51,6 +53,11 @@ public:
         return password;
     }
 
+    string getSalt()
+    {
+        return salt;
+    }
+    
     static User deserialize(string data)
     {
         string delimiter = " ";
@@ -70,17 +77,6 @@ public:
         return u;
     }
 };
-string User::generateSalt()
-{
-    // string salt = "";
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     salt += (char)(rand() % 26 + 97);
-    // }
-    // return salt;
-
-    return "salt00";
-}
 
 string User::serialize()
 {

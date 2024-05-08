@@ -35,7 +35,7 @@ public:
     void handle(int);
     bool handleLogin(int clientSocket);
     void handleLogout(Server s, int clientSocket);
-    void handleRegistration(int clientSocket);
+    bool handleRegistration(int clientSocket);
     void handleGetMessages(int clientSocket);
     void handleAddMessages(int clientSocket);
     void handleListMessages(int clientSocket, int start, int end);
@@ -109,7 +109,8 @@ void Server::handle(int clientSocket)
         bool isLogged = false;
         char command[1024] = "";
         while (true)
-        {
+        {   
+            memset(command, 0, sizeof(command));
             recvMsg(clientSocket, command);
             if (strcmp(command, "login") == 0)
             {
@@ -118,10 +119,11 @@ void Server::handle(int clientSocket)
             }
             else if (strcmp(command, "registration") == 0)
             {
-                handleRegistration(clientSocket);
+                isLogged = handleRegistration(clientSocket); 
             }
             else if (strncmp(command, "list", 4) == 0 && isLogged)
             {
+                cout << "list in esecuzione" << command << "\n";
                 // prendi i due numeri di messaggi da visualizzare dopo la parola list in un buffer di 1024 che rappresentano l'inizio e la fine.
                 int start, end;
                 sscanf(command + 4, "%d %d", &start, &end);
@@ -158,7 +160,7 @@ bool Server::findUserOnFile(const char *username, const char *password)
     while (getline(file, line))
     {
         User u = User::deserialize(line);
-        if (strcmp(u.getUsername().c_str(), username) == 0 && strcmp(u.getPassword().c_str(), password) == 0)
+        if (u.getUsername() == username && u.getPassword() == computeSHA3_512Hash(string(password), u.getSalt()))
             return true;
     }
     return false;
@@ -400,7 +402,7 @@ void Server::handleListMessages(int clientSocket, int start, int end)
         return;
     }
 }
-void Server::handleRegistration(int clientSocket)
+bool Server::handleRegistration(int clientSocket)
 {
     char message[1024] = "";
     sendMsg(clientSocket, "ricevuto_registration");
@@ -424,10 +426,13 @@ void Server::handleRegistration(int clientSocket)
     ofstream file = ofstream(filenameUSR, ios::app);
     file << u.serialize() << "\n";
     file.close();
-    if (findUserOnFile(username.c_str(), password.c_str()))
+    if (findUserOnFile(username.c_str(), password.c_str())){
         sendMsg(clientSocket, "granted_registration");
-    else
+        return true;
+    }else{
         sendMsg(clientSocket, "denied_registration");
+        return false;
+    }
 }
 
 int main()

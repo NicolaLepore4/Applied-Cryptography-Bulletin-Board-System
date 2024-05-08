@@ -78,9 +78,8 @@ ClientHandler::ClientHandler()
         clientSocket = serverSocket;
         handle();
     }
-    catch (exception e)
+    catch (const exception &e)
     {
-        cerr << e.what() << endl;
         exit(-1);
     }
 }
@@ -133,7 +132,6 @@ void ClientHandler::handle()
                 isExited = handleQuit(clientSocket, isLogged);
             else if (command == "closing")
                 isExited = handleExit(clientSocket);
-
             else
                 cout << "You entered an invalid command while not logged!\n";
         }
@@ -157,7 +155,6 @@ void ClientHandler::handle()
                 isExited = handleQuit(clientSocket, isLogged);
             else if (command == "closing")
                 isExited = handleExit(clientSocket);
-
             else
                 cout << "You entered an invalid command\n";
         }
