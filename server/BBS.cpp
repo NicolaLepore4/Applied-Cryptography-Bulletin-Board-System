@@ -6,6 +6,26 @@
 #include <set>
 using namespace std;
 
+vector<std::vector<unsigned char>> readBytesFromFile(const std::string& filename) {
+    // Apri il file
+    std::ifstream file(filename);
+
+    // Controlla se il file è stato aperto correttamente
+    if (!file) {
+        throw std::runtime_error("Could not open file " + filename);
+    }
+
+    // Leggi tutte le righe dal file
+    std::vector<std::vector<unsigned char>> lines;
+    std::string line;
+    while (std::getline(file, line)) {
+        std::vector<unsigned char> bytes(line.begin(), line.end());
+        lines.push_back(bytes);
+    }
+    
+    return lines;
+}
+
 // Class representing the Bulletin Board System
 class BBS
 {
@@ -45,15 +65,13 @@ BBS::BBS(string filenameMSG, string key, string iv)
         // TODO: throw exception or print error
         return;
     }
-    ifstream file = ifstream(filenameMSG);
-    string line;
-    while (getline(file, line))
+    vector<std::vector<unsigned char>> dati = readBytesFromFile(filenameMSG);
+    for (auto &vec : dati)
     {
-        Message m = Message::deserialize(line, key, iv);
+        cout << "PRESOOOOO: "<< string(vec.begin(), vec.end()) <<"AAAAAAAAA"<< endl;
+        Message m = Message::deserialize(vec, key, iv);
         messages.insert({m.getIdentifier(), m});
     }
-    file.close();
-
     cout << "BBS loaded from file " << messages.size() << " messages" << endl;
 }
 // Method to list the latest n available messages in the BBS
@@ -81,16 +99,14 @@ Message BBS::Get(int mid)
 
 int BBS::retrieveLastId()
 {
-    // ordina il set dei messaggi e restituisci l'id dell'ultimo
-    ifstream file(filenameMSG);
-    string line;
-    int lastId = -1;
-    while (getline(file, line))
+    Message lastMessage;
+    if (!messages.empty())
     {
-        lastId = stoi(line);
+        auto lastElement = std::prev(messages.end());
+        int lastKey = lastElement->first;
+        lastMessage = lastElement->second;
     }
-    file.close();
-    return lastId;
+    return lastMessage.getIdentifier();
 }
 int BBS::size()
 {
@@ -103,10 +119,11 @@ void BBS::Add(string title, string author, string body)
     int id = retrieveLastId() + 1;
     Message m = Message(id, title, author, body);
     messages.insert({id, m});
-    ofstream file = ofstream(filenameMSG, ios::app);
-    vector<unsigned char> enc_vec = encrypt_AES(m.serialize(), reinterpret_cast<const unsigned char*>(key.c_str()), reinterpret_cast<const unsigned char*>(iv.c_str()));
-    string str(enc_vec.begin(),enc_vec.end());
-    file << str << endl;
+    ofstream file(filenameMSG, ios::binary | ios::app);
+    vector<unsigned char> enc_vec = encrypt_AES(m.serialize(), reinterpret_cast<const unsigned char *>(key.c_str()), reinterpret_cast<const unsigned char *>(iv.c_str()));
+    cout << "MESSOOOOO: "<< string(enc_vec.begin(), enc_vec.end()) << "AAAAAAAAA"<< endl;
+    file.write(reinterpret_cast<const char *>(enc_vec.data()), enc_vec.size());
+
     file.close();
     // funzione che scrive su file il messaggio
 }

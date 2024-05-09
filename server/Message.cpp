@@ -3,6 +3,7 @@
 #include "crypto/aes.cpp"
 using namespace std;
 
+
 // Structure to represent a message
 class Message {
 private:
@@ -22,7 +23,7 @@ public:
     friend istream& operator>>(istream& is, Message& message);
     string serialize();
     string serialize_for_list();
-    static Message deserialize(string data,string key, string iv);
+    static Message deserialize(vector<unsigned char> data,string key, string iv);
 
     // create operator < and > for sorting
     bool operator<(const Message&) const;
@@ -104,17 +105,19 @@ public:
         return to_string(identifier) + "," + title + "," + author;
     }
 
-    Message Message::deserialize(string data,string key, string iv) {
+    Message Message::deserialize(vector<unsigned char> data,string key, string iv) {
+        
         vector<unsigned char> vec(data.begin(), data.end());
         vector<unsigned char> data_dec = decrypt_AES(vec,  reinterpret_cast<const unsigned char*>(key.c_str()), reinterpret_cast<const unsigned char*>(iv.c_str()));
-        data = string(data_dec.begin(), data_dec.end());
-        int identifier = stoi(data.substr(0, data.find(",")));
-        data = data.substr(data.find(",") + 1);
-        string title = data.substr(0, data.find(","));
-        data = data.substr(data.find(",") + 1);
-        string author = data.substr(0, data.find(","));
-        data = data.substr(data.find(",") + 1);
-        string body = data;
+        string data2;
+        data2 = string(data_dec.begin(), data_dec.end());
+        int identifier = stoi(data2.substr(0, data2.find(",")));
+        data2 = data2.substr(data2.find(",") + 1);
+        string title = data2.substr(0, data2.find(","));
+        data2 = data2.substr(data2.find(",") + 1);
+        string author = data2.substr(0, data2.find(","));
+        data2 = data2.substr(data2.find(",") + 1);
+        string body = data2;
         return Message(identifier, title, author, body);
     }
 

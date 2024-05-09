@@ -23,9 +23,9 @@ class Server
 {
 private:
     // Chiave di crittografia (32 byte)
-    string key = "UnaChiaveDiCritto32Byte";
+    string key = "UnaChiaveSegretaMoltoLunga123456";
     // Vettore di inizializzazione (16 byte)
-    string iv = "UnVettoreIniziale";
+    string iv = "UnVettoreInizial";
     const static int port = 12345; //,pubKey, privKey (?)
     const string ip = "127.0.0.1";
     int serverSocket;

@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 #include <string.h>
+#include <sstream>
+#include <iomanip>
+
 
 using namespace std;
 
@@ -104,8 +107,8 @@ vector<unsigned char> decrypt_AES(const vector<unsigned char> &ciphertext, const
     copy(out_buf, out_buf + out_len + out_len_final, decrypted_data.begin());
     return decrypted_data;
 }
-
-/*int main()
+/*
+int main()
 {
 
     // Chiave di crittografia (32 byte)
@@ -118,12 +121,35 @@ vector<unsigned char> decrypt_AES(const vector<unsigned char> &ciphertext, const
     string plaintext = "Nel mezzo del cammin di nostra vita mi ritrovai per una selva oscura,ché la diritta via era smarrita. Ahi quanto a dir qual era è cosa dura, esta selva selvaggia e aspra e forte, che nel pensier rinova la paura ! Tant'è amara che poco è più morte; ma per trattar del ben ch 'i' vi trovai, dirò de l 'altre cose ch' i ' v' ho scorte. Io non so ben ridir com 'i' v'intrai, tant'era pien di sonno a quel punto che la verace via abbandonai.";
 
     // Crittografa la stringa
-    vector<unsigned char>encrypted_data = encrypt_AES(plaintext, key, iv);
+    vector<unsigned char> encrypted_data = encrypt_AES(plaintext, key, iv);
 
     string str(encrypted_data.begin(), encrypted_data.end());
     // Converte la stringa crittografata in formato esadecimale
+    std::ostringstream oss;
+    for (char c : str)
+    {
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(static_cast<unsigned char>(c));
+    }
 
-    cout << "Stringa crittografata: " << str << endl;
+    std::string hexStr = oss.str();
+    cout << "Stringa crittografata: " << hexStr << endl;
+    cout << "Stringaaaaaaaa: " << str << endl;
+
+    std::vector<unsigned char> vec;
+
+    for (size_t i = 0; i < hexStr.size(); i += 2) {
+        // Extract two hex characters
+        std::string byte_str = hexStr.substr(i, 2);
+        
+        // Convert hex string to unsigned char
+        unsigned char byte;
+        std::stringstream ss;
+        ss << std::hex<<byte_str;
+        ss >> byte;
+        
+        vec.push_back(byte);
+  }
+    cout << "STRINGAAAAAA: " << string(vec.begin(), vec.end()) << endl;
 
     // Decrypt the ciphertext
     vector<unsigned char> decrypted_data = decrypt_AES(encrypted_data, key, iv);
