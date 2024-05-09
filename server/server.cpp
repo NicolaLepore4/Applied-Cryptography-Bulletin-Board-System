@@ -151,12 +151,8 @@ void Server::handle(int clientSocket)
             }
             else if (strncmp(command, "list", 4) == 0 && isLogged)
             {
-<<<<<<< Updated upstream
                 cout << "list in esecuzione" << command << "\n";
                 // prendi i due numeri di messaggi da visualizzare dopo la parola list in un buffer di 1024 che rappresentano l'inizio e la fine.
-=======
-                // prendi i due numeri di messaggi da visualizzare dopo la parola list in un buffer di 2048 che rappresentano l'inizio e la fine.
->>>>>>> Stashed changes
                 int start, end;
                 sscanf(command + 4, "%d %d", &start, &end);
                 handleListMessages(clientSocket, start, end);
