@@ -105,7 +105,7 @@ vector<unsigned char> decrypt_AES(const vector<unsigned char> &ciphertext, const
     return decrypted_data;
 }
 
-int main()
+/*int main()
 {
 
     // Chiave di crittografia (32 byte)
@@ -134,3 +134,4 @@ int main()
 
     return 0;
 }
+*/

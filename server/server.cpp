@@ -22,10 +22,14 @@ const static int MAX_CONNECTIONS = 10;
 class Server
 {
 private:
+    // Chiave di crittografia (32 byte)
+    string key = "UnaChiaveDiCritto32Byte";
+    // Vettore di inizializzazione (16 byte)
+    string iv = "UnVettoreIniziale";
     const static int port = 12345; //,pubKey, privKey (?)
     const string ip = "127.0.0.1";
     int serverSocket;
-    BBS board = BBS(filenameMSG);
+    BBS board = BBS(filenameMSG, key, iv);
     list<Client> users = list<Client>();
     string public_key, private_key;
 

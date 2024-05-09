@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-
 #include "Message.cpp"
 #include <unordered_map>
 #include <set>
@@ -14,12 +13,11 @@ private:
     // create hash map to store messages by id
     unordered_map<int, Message> messages;
     string filenameMSG = "";
-
-    
+    string key, iv;
 
 public:
     // Constructor to load messages from file
-    BBS(string filenameMSG);
+    BBS(string filenameMSG, string key, string iv);
 
     // Method to list the latest n available messages in the BBS
     set<Message> List(int start, int end);
@@ -36,8 +34,10 @@ public:
     int retrieveLastId();
 };
 
-BBS::BBS(string filenameMSG)
+BBS::BBS(string filenameMSG, string key, string iv)
 {
+    this->key = key;
+    this->iv = iv;
     // funzione che legge da file i messaggi
     this->filenameMSG = filenameMSG;
     if (filenameMSG == "")
@@ -49,7 +49,7 @@ BBS::BBS(string filenameMSG)
     string line;
     while (getline(file, line))
     {
-        Message m = Message::deserialize(line);
+        Message m = Message::deserialize(line, key, iv);
         messages.insert({m.getIdentifier(), m});
     }
     file.close();
@@ -104,7 +104,9 @@ void BBS::Add(string title, string author, string body)
     Message m = Message(id, title, author, body);
     messages.insert({id, m});
     ofstream file = ofstream(filenameMSG, ios::app);
-    file << m.serialize() << endl;
+    vector<unsigned char> enc_vec = encrypt_AES(m.serialize(), reinterpret_cast<const unsigned char*>(key.c_str()), reinterpret_cast<const unsigned char*>(iv.c_str()));
+    string str(enc_vec.begin(),enc_vec.end());
+    file << str << endl;
     file.close();
     // funzione che scrive su file il messaggio
 }
