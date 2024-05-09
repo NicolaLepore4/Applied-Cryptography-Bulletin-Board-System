@@ -1,4 +1,5 @@
-CXXFLAGS = -std=c++17 -Wall -Wextra -Werror -Wno-sign-compare -Wno-unused-parameter -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function -Wno-unused-but-set-variable -Wno-unused-local-typedefs -Wno-unused-value -Wno-unused-local-typedefs
+CXXFLAGS = -std=c++17 -lcrypto
+# -Wall -Wextra -Werror -Wno-sign-compare -Wno-unused-parameter -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function -Wno-unused-but-set-variable -Wno-unused-local-typedefs -Wno-unused-value -Wno-unused-local-typedefs
 SERVER = server/server.cpp
 SERVER_EXE = server/server.out
 
