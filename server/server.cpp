@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
+#include "./crypto/key_exchange.cpp"
 using namespace std;
 
 const static string filenameMSG = "database/BBS.txt";
@@ -26,6 +27,7 @@ private:
     int serverSocket;
     BBS board = BBS(filenameMSG);
     list<Client> users = list<Client>();
+    string public_key, private_key;
 
     bool findUserOnFile(const char *, const char *); // check if user exists in file and if password is correct
     pair<string, string> extractNoteDetails(const std::string &note);
@@ -45,8 +47,9 @@ public:
 
     void sendMsg(int clientSocket, const char *msg)
     {
-        int size = 1024;
-        if (send(clientSocket, msg, size, 0) == -1){
+        int size = 2048;
+        if (send(clientSocket, msg, size, 0) == -1)
+        {
             perror("send");
             close(clientSocket);
             throw runtime_error("Client closed connection");
@@ -56,9 +59,10 @@ public:
 
     void recvMsg(int clientSocket, char *msg)
     {
-        int size = 1024;
+        int size = 2048;
         int n = read(clientSocket, msg, size);
-        if (n <= 0) {
+        if (n <= 0)
+        {
             // Read error or client closed connection, so close our end and return
             perror("read");
             close(clientSocket);
@@ -106,8 +110,32 @@ void Server::handle(int clientSocket)
 {
     try
     {
+        if (!generateKeyPair(public_key, private_key))
+            throw runtime_error("Error generating keys");
+
+        sendMsg(clientSocket, public_key.c_str());
+        char recv_pub_key_client[2048] = "";
+        recvMsg(clientSocket, recv_pub_key_client);
+
+        string client_secret = generateSharedSecret(recv_pub_key_client, private_key);
+        string msg_c = "Connection established 234567890";
+
+        auto enc_msg = encryptString(msg_c, reinterpret_cast<const unsigned char *>(client_secret.c_str()), size(client_secret));
+
+        sendMsg(clientSocket, (enc_msg.first).c_str());
+
+        char response[2048] = "";
+        recvMsg(clientSocket, response);
+        sendMsg(clientSocket, (to_string(enc_msg.second)).c_str());
+
+        char challenge[2048] = "";
+        char challenge_len[2048] = "";
+        recvMsg(clientSocket, challenge_len);
+        sendMsg(clientSocket, "ricevuto_challenge_len");
+        recvMsg(clientSocket, challenge);
+
         bool isLogged = false;
-        char command[1024] = "";
+        char command[2048] = "";
         while (true)
         {   
             memset(command, 0, sizeof(command));
@@ -123,8 +151,12 @@ void Server::handle(int clientSocket)
             }
             else if (strncmp(command, "list", 4) == 0 && isLogged)
             {
+<<<<<<< Updated upstream
                 cout << "list in esecuzione" << command << "\n";
                 // prendi i due numeri di messaggi da visualizzare dopo la parola list in un buffer di 1024 che rappresentano l'inizio e la fine.
+=======
+                // prendi i due numeri di messaggi da visualizzare dopo la parola list in un buffer di 2048 che rappresentano l'inizio e la fine.
+>>>>>>> Stashed changes
                 int start, end;
                 sscanf(command + 4, "%d %d", &start, &end);
                 handleListMessages(clientSocket, start, end);
@@ -170,11 +202,11 @@ bool Server::handleLogin(int clientSocket)
 {
     // assume that already read login command
     sendMsg(clientSocket, "ricevuto_login");
-    char username[1024] = "";
+    char username[2048] = "";
     recvMsg(clientSocket, username);
     sendMsg(clientSocket, "ricevuto_username");
 
-    char password[1024] = "";
+    char password[2048] = "";
     recvMsg(clientSocket, password);
     sendMsg(clientSocket, "ricevuto_password");
 
@@ -217,7 +249,7 @@ void Server::handleLogout(Server s, int clientSocket)
 //     send(clientSocket, &g, sizeof(g), 0);
 //     send(clientSocket, &publicKey, sizeof(publicKey), 0);
 
-//     char recv_pub_key_client[1024] = "";
+//     char recv_pub_key_client[2048] = "";
 //     recv(clientSocket, recv_pub_key_client, sizeof(recv_pub_key_client), 0);
 //     auto client_secret = Key_Exchange.setClientPublicKey(recv_pub_key_client);
 
@@ -252,14 +284,16 @@ void Server::start()
                 cerr << "Cannot accept connection\n";
                 continue;
             }
+
             // 2.4. Successful connection established
-                threads.push_back(thread(&Server::handle, this, clientSocket));
-                // OR (if you need to check for thread creation errors)
-                if (!threads.back().joinable()) {
+            threads.push_back(thread(&Server::handle, this, clientSocket));
+            // OR (if you need to check for thread creation errors)
+            if (!threads.back().joinable())
+            {
                 // Handle thread creation error (e.g., insufficient resources)
                 cerr << "Error creating thread\n";
                 continue;
-                } 
+            }
         }
         // std::thread t1(&Server::handle, this, clientSocket);
         //  handle(clientSocket);
@@ -280,7 +314,7 @@ Message Server::findMsgOnFile(char *identifier)
 void Server::handleGetMessages(int clientSocket)
 {
     sendMsg(clientSocket, "ricevuto_get");
-    char message[1024] = "";
+    char message[2048] = "";
     recvMsg(clientSocket, message);
     // expecting message identifier to be "get"
     cout << "message: " << message << "\n";
@@ -315,7 +349,7 @@ pair<string, string> Server::extractNoteDetails(const std::string &note)
 }
 void Server::handleAddMessages(int clientSocket)
 {
-    char message[1024] = "";
+    char message[2048] = "";
     sendMsg(clientSocket, "ricevuto_add");
     recvMsg(clientSocket, message);
     try
@@ -352,7 +386,7 @@ void Server::handleListMessages(int clientSocket, int start, int end)
 {
     try
     {
-        char message[1024] = "";
+        char message[2048] = "";
         sendMsg(clientSocket, "ricevuto_list");
         recvMsg(clientSocket, message);
         if (strcmp(message, "ok") != 0)
@@ -367,7 +401,7 @@ void Server::handleListMessages(int clientSocket, int start, int end)
             }
             // restituisce gli ultimi numMsg all'interno di BBS
             set<Message> messages = board.List(start, end);
-            char n_elements[1024] = "";
+            char n_elements[2048] = "";
             for (auto msg : messages)
             {
                 // Serialize the message and send it
@@ -404,7 +438,7 @@ void Server::handleListMessages(int clientSocket, int start, int end)
 }
 bool Server::handleRegistration(int clientSocket)
 {
-    char message[1024] = "";
+    char message[2048] = "";
     sendMsg(clientSocket, "ricevuto_registration");
     string username = "", password = "", email = "";
     recvMsg(clientSocket, message);
