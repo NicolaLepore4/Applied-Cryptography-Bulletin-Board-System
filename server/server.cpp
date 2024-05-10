@@ -46,6 +46,7 @@ public:
     void handleGetMessages(int clientSocket);
     void handleAddMessages(int clientSocket);
     void handleListMessages(int clientSocket, int start, int end);
+    bool checkUsernameOnFile(const char *username);
 
     Server();
     void start();
@@ -194,6 +195,19 @@ bool Server::findUserOnFile(const char *username, const char *password)
     {
         User u = User::deserialize(line);
         if (u.getUsername() == username && u.getPassword() == computeSHA3_512Hash(string(password), u.getSalt()))
+            return true;
+    }
+    return false;
+}
+
+bool Server::checkUsernameOnFile(const char *username)
+{
+    ifstream file = ifstream(filenameUSR);
+    string line;
+    while (getline(file, line))
+    {
+        User u = User::deserialize(line);
+        if (u.getUsername() == username)
             return true;
     }
     return false;
@@ -478,6 +492,11 @@ bool Server::handleRegistration(int clientSocket)
     }
     cout << "username: " << username << " password: " << password << " email: " << email << "\n";
     User u = User(username, password, email);
+    if(checkUsernameOnFile(username.c_str()))
+    {
+        sendMsg(clientSocket, "username_already_exists");
+        return false;
+    }
     ofstream file = ofstream(filenameUSR, ios::app);
     file << u.serialize() << "\n";
     file.close();
