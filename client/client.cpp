@@ -259,15 +259,16 @@ bool ClientHandler::handleRegistration()
 
     if (strcmp(response, "ricevuto_email") != 0)
         return false;
+    while(true){
+        cout << "Enter password: ";
+        getline(cin, password);
+        sendMsg(clientSocket, password.c_str());
+        recvMsg(clientSocket, (response));
 
-    cout << "Enter password: ";
-    getline(cin, password);
-    sendMsg(clientSocket, password.c_str());
-    recvMsg(clientSocket, (response));
-
-    if (strcmp(response, "ricevuto_password") != 0)
-        return false;
-
+        if (strcmp(response, "ricevuto_password") != 0)
+            continue;
+        else break;
+    }
     sendMsg(clientSocket, "ok");
     (handleRegistrationChallenge(clientSocket));
     recvMsg(clientSocket, (response));

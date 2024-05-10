@@ -476,11 +476,18 @@ bool Server::handleRegistration(int clientSocket)
     recvMsg(clientSocket, message);
     email = string(message);
     sendMsg(clientSocket, "ricevuto_email");
-
-    recvMsg(clientSocket, message);
-    password = string(message);
-    sendMsg(clientSocket, "ricevuto_password");
-
+    while (true){
+        recvMsg(clientSocket, message);
+        password = string(message);
+        if (password.size()<10){
+            sendMsg(clientSocket, "password_troppo_corta");
+            continue;
+        }
+        else{
+            sendMsg(clientSocket, "ricevuto_password");
+            break;
+        }
+    }
     recvMsg(clientSocket, message);
     bool res = handleRegistrationChallenge(clientSocket);
     cout<<"Handle registration challenge: "<<res<<"\n";
