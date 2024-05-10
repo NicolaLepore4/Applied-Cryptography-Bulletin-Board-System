@@ -34,7 +34,7 @@ private:
     string public_key, private_key;
 
     bool findUserOnFile(const char *, const char *); // check if user exists in file and if password is correct
-    pair<string, string> extractNoteDetails(const std::string &note);
+    pair<string, string> extractNoteDetails(const string &note);
     Message findMsgOnFile(char *);
 
 public:
@@ -286,7 +286,7 @@ void Server::start()
                 continue;
             }
         }
-        // std::thread t1(&Server::handle, this, clientSocket);
+        // thread t1(&Server::handle, this, clientSocket);
         //  handle(clientSocket);
         // t1.detach();
     }
@@ -321,21 +321,21 @@ void Server::handleGetMessages(int clientSocket)
 
     recvMsg(clientSocket, message);
 
-    std::string msgSerialized = msg.serialize();
+    string msgSerialized = msg.serialize();
     sendMsg(clientSocket, msgSerialized.c_str());
     cout << "messaggio inviato" << endl;
     recvMsg(clientSocket, message);
 }
 
-pair<string, string> Server::extractNoteDetails(const std::string &note)
+pair<string, string> Server::extractNoteDetails(const string &note)
 {
     size_t titleStart = note.find("title: ");
     size_t titleEnd = note.find("\n");
-    std::string title = note.substr(titleStart + 7, titleEnd - titleStart - 7);
+    string title = note.substr(titleStart + 7, titleEnd - titleStart - 7);
 
     size_t bodyStart = note.find("body: ", titleEnd);
     size_t bodyEnd = note.find("\n", bodyStart);
-    std::string body = note.substr(bodyStart + 6, bodyEnd - bodyStart - 6);
+    string body = note.substr(bodyStart + 6, bodyEnd - bodyStart - 6);
     return {title, body};
 }
 void Server::handleAddMessages(int clientSocket)
@@ -346,7 +346,7 @@ void Server::handleAddMessages(int clientSocket)
     try
     { // estrae i dettagli della nota
         string title, body;
-        std::tie(title, body) = extractNoteDetails(message);
+        tie(title, body) = extractNoteDetails(message);
         // restituisce l'username da cercare nella lista degli utenti che combacia con il clientSocket
         string usr = "";
         for (auto client : users)
@@ -456,7 +456,7 @@ bool Server::handleRegistrationChallenge(int clientSocket)
     // ricezione del codice OTP inserito dal client
     char message[2048] = "";
     recvMsg(clientSocket, message);
-    string otp_received = std::string(message);
+    string otp_received = string(message);
 
     // Verifica del codice OTP
     return strcmp(otp.c_str(), otp_received.c_str()) == 0;
@@ -469,16 +469,16 @@ bool Server::handleRegistration(int clientSocket)
     string username = "", password = "", email = "";
     recvMsg(clientSocket, message);
     // trasforma message in stringa
-    username = std::string(message);
+    username = string(message);
     cout << "username: " << username << "\n";
     sendMsg(clientSocket, "ricevuto_username");
 
     recvMsg(clientSocket, message);
-    email = std::string(message);
+    email = string(message);
     sendMsg(clientSocket, "ricevuto_email");
 
     recvMsg(clientSocket, message);
-    password = std::string(message);
+    password = string(message);
     sendMsg(clientSocket, "ricevuto_password");
 
     recvMsg(clientSocket, message);

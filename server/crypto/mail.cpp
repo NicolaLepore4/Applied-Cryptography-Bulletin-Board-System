@@ -7,11 +7,11 @@
 #include <unistd.h>
 
 // Function to send email
-bool send_email(const std::string &from,
-                const std::string &to,
-                const std::string &subject,
-                const std::string &body,
-                const std::string &smtp_server,
+bool send_email(const string &from,
+                const string &to,
+                const string &subject,
+                const string &body,
+                const string &smtp_server,
                 int port)
 {
 
@@ -76,7 +76,7 @@ bool send_email(const std::string &from,
     // Send SMTP commands (EHLO, AUTH, MAIL FROM, RCPT TO, DATA, etc.)
     // ... (implementation required based on SMTP protocol)
     // Send EHLO command
-    std::string ehlo_command = "EHLO localhost\r\n";
+    string ehlo_command = "EHLO localhost\r\n";
     if (SSL_write(ssl, ehlo_command.c_str(), ehlo_command.length()) < 0)
     {
         ERR_print_errors_fp(stderr);
@@ -97,7 +97,7 @@ bool send_email(const std::string &from,
     }
 
     // Send MAIL FROM command
-    std::string mail_from_command = "MAIL FROM: <" + from + ">\r\n";
+    string mail_from_command = "MAIL FROM: <" + from + ">\r\n";
     if (SSL_write(ssl, mail_from_command.c_str(), mail_from_command.length()) < 0)
     {
         ERR_print_errors_fp(stderr);
@@ -117,7 +117,7 @@ bool send_email(const std::string &from,
     }
 
     // Send RCPT TO command for each recipient
-    std::string rcpt_to_command = "RCPT TO: <" + to + ">\r\n";
+    string rcpt_to_command = "RCPT TO: <" + to + ">\r\n";
     if (SSL_write(ssl, rcpt_to_command.c_str(), rcpt_to_command.length()) < 0)
     {
         ERR_print_errors_fp(stderr);
@@ -140,7 +140,7 @@ bool send_email(const std::string &from,
     }
 
     // Send DATA command
-    std::string data_command = "DATA\r\n";
+    string data_command = "DATA\r\n";
     if (SSL_write(ssl, data_command.c_str(), data_command.length()) < 0)
     {
         ERR_print_errors_fp(stderr);
@@ -160,7 +160,7 @@ bool send_email(const std::string &from,
     }
     // ... (implementation required)
     // Send email content (subject, body)
-    std::string email_content = "Subject: " + subject + "\r\n\r\n" + body + "\r\n.";
+    string email_content = "Subject: " + subject + "\r\n\r\n" + body + "\r\n.";
     if (SSL_write(ssl, email_content.c_str(), email_content.length()) < 0)
     {
         ERR_print_errors_fp(stderr);
@@ -197,20 +197,20 @@ bool send_email(const std::string &from,
 int main()
 {
     // Example usage
-    std::string from = "nicolalepore0@gmail.com";
-    std::string to = "nicolalepore0@gmail.com";
-    std::string subject = "Test Email";
-    std::string body = "This is a test email sent from C++ with OpenSSL.";
-    std::string smtp_server = "smtp.gmail.com";
+    string from = "nicolalepore0@gmail.com";
+    string to = "nicolalepore0@gmail.com";
+    string subject = "Test Email";
+    string body = "This is a test email sent from C++ with OpenSSL.";
+    string smtp_server = "smtp.gmail.com";
     int port = 587; // or 587 for STARTTLS
 
     if (send_email(from, to, subject, body, smtp_server, port))
     {
-        std::cout << "Email sent successfully!" << std::endl;
+        cout << "Email sent successfully!" << endl;
     }
     else
     {
-        std::cerr << "Error sending email." << std::endl;
+        cerr << "Error sending email." << endl;
     }
 
     return 0;

@@ -125,26 +125,26 @@ int main()
 
     string str(encrypted_data.begin(), encrypted_data.end());
     // Converte la stringa crittografata in formato esadecimale
-    std::ostringstream oss;
+    ostringstream oss;
     for (char c : str)
     {
-        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(static_cast<unsigned char>(c));
+        oss << hex << setw(2) << setfill('0') << static_cast<int>(static_cast<unsigned char>(c));
     }
 
-    std::string hexStr = oss.str();
+    string hexStr = oss.str();
     cout << "Stringa crittografata: " << hexStr << endl;
     cout << "Stringaaaaaaaa: " << str << endl;
 
-    std::vector<unsigned char> vec;
+    vector<unsigned char> vec;
 
     for (size_t i = 0; i < hexStr.size(); i += 2) {
         // Extract two hex characters
-        std::string byte_str = hexStr.substr(i, 2);
+        string byte_str = hexStr.substr(i, 2);
         
         // Convert hex string to unsigned char
         unsigned char byte;
-        std::stringstream ss;
-        ss << std::hex<<byte_str;
+        stringstream ss;
+        ss << hex<<byte_str;
         ss >> byte;
         
         vec.push_back(byte);

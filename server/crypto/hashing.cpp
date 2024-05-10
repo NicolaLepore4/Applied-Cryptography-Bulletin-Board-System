@@ -15,9 +15,9 @@ using namespace std;
  */
 int generateSalt()
 {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<> dis(0, 1000000); // Intervallo per il salt
+  random_device rd;
+  mt19937 gen(rd());
+  uniform_int_distribution<> dis(0, 1000000); // Intervallo per il salt
   return dis(gen);
 }
 
@@ -27,7 +27,7 @@ int generateSalt()
  * @param input The input string to be hashed.
  * @return The SHA3-512 hash of the input string as a hexadecimal string.
  */
-string computeSHA3_512Hash(const std::string &input)
+string computeSHA3_512Hash(const string &input)
 {
   // creation of the context used to calculate the hash
   EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
@@ -44,7 +44,7 @@ string computeSHA3_512Hash(const std::string &input)
   EVP_MD_CTX_free(mdctx);
 
   // Convert hash to hex string
-  std::string hashStr;
+  string hashStr;
   char hex[3];
   for (int i = 0; i < SHA512_DIGEST_LENGTH; ++i)
   {
@@ -64,9 +64,9 @@ string computeSHA3_512Hash(const std::string &input)
  * @param salt The salt string to be concatenated with the input
  * @return The SHA3-512 hash of the input concatenated with the salt.
  */
-string computeSHA3_512Hash(const std::string &input, const std::string &salt)
+string computeSHA3_512Hash(const string &input, const string &salt)
 {
-  std::string data = input + salt;
+  string data = input + salt;
   return computeSHA3_512Hash(data);
 }
 

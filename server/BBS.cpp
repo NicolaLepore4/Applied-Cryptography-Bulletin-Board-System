@@ -6,22 +6,22 @@
 #include <set>
 using namespace std;
 
-vector<std::vector<unsigned char>> readBytesFromFile(const std::string& filename) {
+vector<vector<unsigned char>> readBytesFromFile(const string& filename) {
     // Apri il file
-    std::ifstream file(filename);
+    ifstream file(filename);
 
     // Controlla se il file è stato aperto correttamente
     if (!file) {
-        throw std::runtime_error("Could not open file " + filename);
+        throw runtime_error("Could not open file " + filename);
     }
 
     // Leggi dal token /start al token /end
-    std::vector<std::vector<unsigned char>> result;
-    std::vector<unsigned char> buffer;
-    std::string line;
+    vector<vector<unsigned char>> result;
+    vector<unsigned char> buffer;
+    string line;
 
     // insert in buffer the lines between /start and /end and not the tokens
-    while (std::getline(file, line)) {
+    while (getline(file, line)) {
         if (line == "/start")
             buffer.clear();
         else if (line == "/end")
@@ -71,7 +71,7 @@ BBS::BBS(string filenameMSG, string key, string iv)
         // TODO: throw exception or print error
         return;
     }
-    vector<std::vector<unsigned char>> dati = readBytesFromFile(filenameMSG);
+    vector<vector<unsigned char>> dati = readBytesFromFile(filenameMSG);
 
     // each vector in dati has the following structure:
     // /start

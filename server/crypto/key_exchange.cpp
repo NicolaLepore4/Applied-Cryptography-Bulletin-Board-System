@@ -9,7 +9,7 @@
 
 using namespace std;
 
-bool generateKeyPair(std::string& publicKey, std::string& privateKey) {
+bool generateKeyPair(string& publicKey, string& privateKey) {
     EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_X25519, nullptr); //key algorithm context
     EVP_PKEY* pkey = NULL;
     EVP_PKEY_keygen_init(ctx);     //Generates key with context
@@ -46,8 +46,8 @@ string adjust_key(string key){
 
 // signal protocol
 
-bool saveToFile(const std::string& filename, const std::string& data, bool isPEMFormat) {
-    std::ofstream file(filename, std::ios::binary);
+bool saveToFile(const string& filename, const string& data, bool isPEMFormat) {
+    ofstream file(filename, ios::binary);
     if (isPEMFormat) {
         
         file << data;
@@ -57,16 +57,16 @@ bool saveToFile(const std::string& filename, const std::string& data, bool isPEM
     return true;
 }
 
-static const std::string base64_chars =
+static const string base64_chars =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 "abcdefghijklmnopqrstuvwxyz"
 "0123456789+/";
 
-std::string Base64Encode(const unsigned char* secretData, size_t length) {
-    std::string encoded_data;
+string Base64Encode(const unsigned char* secretData, size_t length) {
+    string encoded_data;
 
     encoded_data.reserve(((length + 2) / 3) * 4);
-    // std::cout << length << std::endl;
+    // cout << length << endl;
 
     // Iterate over each group of 3 bytes
     for (size_t i = 0; i < length; i += 3) {
@@ -93,7 +93,7 @@ std::string Base64Encode(const unsigned char* secretData, size_t length) {
     return encoded_data;
 }
 
-unsigned char* Base64Decode(const std::string& encoded_data , int length) {
+unsigned char* Base64Decode(const string& encoded_data , int length) {
     unsigned char* decoded_data = new unsigned char [length];
 
     int j = 0;
@@ -127,7 +127,7 @@ unsigned char* Base64Decode(const std::string& encoded_data , int length) {
 
 }
 
-std:: string generateSharedSecret(const string& publicKey, const string& privateKey) {
+ string generateSharedSecret(const string& publicKey, const string& privateKey) {
 
     // Load public key from PEM format
     BIO* bioPublicKey = BIO_new_mem_buf(publicKey.data(), publicKey.size());
@@ -159,16 +159,16 @@ std:: string generateSharedSecret(const string& publicKey, const string& private
     
     //return secretData;
 
-    std::string encoded_data = Base64Encode(secretData, secretSize);
-    std::cout << "ENCODED DATA: "<<encoded_data << std::endl;
+    string encoded_data = Base64Encode(secretData, secretSize);
+    cout << "ENCODED DATA: "<<encoded_data << endl;
 
     return encoded_data;
     
 }
 
 
-std::pair<std::string, int> encryptString(const std::string& plainText, const unsigned char* aes_key, int keyLength) {
-    std::string encryptedText;
+pair<string, int> encryptString(const string& plainText, const unsigned char* aes_key, int keyLength) {
+    string encryptedText;
 
     // Generate an initialization vector(IV)
     unsigned char iv[EVP_MAX_IV_LENGTH];
@@ -205,12 +205,12 @@ std::pair<std::string, int> encryptString(const std::string& plainText, const un
     delete[] encryptedTextBuffer;
     EVP_CIPHER_CTX_free(ctx);
 
-    return std::make_pair(encryptedText, finalLength);
+    return make_pair(encryptedText, finalLength);
     
 }
 
-std::string decryptString(const std::string& encryptedText, const unsigned char* aes_key, int length) {
-    std::string decryptedText;
+string decryptString(const string& encryptedText, const unsigned char* aes_key, int length) {
+    string decryptedText;
 
     // Extract the IV and cipher text
     const unsigned char* iv = reinterpret_cast<const unsigned char*>(encryptedText.c_str());
@@ -257,8 +257,8 @@ std::string decryptString(const std::string& encryptedText, const unsigned char*
 }
  
 // int main() {
-//     std::string bobPublicKey, bobPrivateKey, alicePublicKey, alicePrivateKey;
-//     std::string plainText = "Hello World";
+//     string bobPublicKey, bobPrivateKey, alicePublicKey, alicePrivateKey;
+//     string plainText = "Hello World";
 
 //     // Generates key pair for Bob
 //     if (generateKeyPair(bobPublicKey, bobPrivateKey)) {
@@ -275,9 +275,9 @@ std::string decryptString(const std::string& encryptedText, const unsigned char*
 //     // Alice's shared secret
 //     //unsigned char* alice = generateSharedSecret(bobPublicKey, alicePrivateKey);
 //     //size_t len = strlen((char*)alice); 
-//     std::string aliceSharedSecret = generateSharedSecret(bobPublicKey, alicePrivateKey);
+//     string aliceSharedSecret = generateSharedSecret(bobPublicKey, alicePrivateKey);
 //     // Bob's shared secret
-//     std::string bobSharedSecret = generateSharedSecret(alicePublicKey, bobPrivateKey);
+//     string bobSharedSecret = generateSharedSecret(alicePublicKey, bobPrivateKey);
 
 //     // Compare the shared secret keys
 //     if (bobSharedSecret == aliceSharedSecret) {
@@ -285,12 +285,12 @@ std::string decryptString(const std::string& encryptedText, const unsigned char*
 //         const unsigned char* aes_key = Base64Decode(aliceSharedSecret, 32);
 //         int keyLength = 32;
         
-//         std::pair< std::string, int> string = encryptString(plainText, aes_key, keyLength);
-//         std::string decryptedText = decryptString(string.first, aes_key, string.second);
+//         pair< string, int> string = encryptString(plainText, aes_key, keyLength);
+//         string decryptedText = decryptString(string.first, aes_key, string.second);
 
-//         std::cout << "Plain text: " << plainText << std::endl;
-//         std::cout << "Encrypted text: " << string.first << std::endl;
-//         std::cout << "Decrypted text: " << decryptedText << std::endl;
+//         cout << "Plain text: " << plainText << endl;
+//         cout << "Encrypted text: " << string.first << endl;
+//         cout << "Decrypted text: " << decryptedText << endl;
 
 
 //         return 0;
