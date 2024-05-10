@@ -42,6 +42,7 @@ public:
     bool handleLogin(int clientSocket);
     void handleLogout(Server s, int clientSocket);
     bool handleRegistration(int clientSocket);
+    bool handleRegistrationChallenge(int clientSocket);
     void handleGetMessages(int clientSocket);
     void handleAddMessages(int clientSocket);
     void handleListMessages(int clientSocket, int start, int end);
@@ -141,7 +142,7 @@ void Server::handle(int clientSocket)
         bool isLogged = false;
         char command[2048] = "";
         while (true)
-        {   
+        {
             memset(command, 0, sizeof(command));
             recvMsg(clientSocket, command);
             if (strcmp(command, "login") == 0)
@@ -151,7 +152,7 @@ void Server::handle(int clientSocket)
             }
             else if (strcmp(command, "registration") == 0)
             {
-                isLogged = handleRegistration(clientSocket); 
+                isLogged = handleRegistration(clientSocket);
             }
             else if (strncmp(command, "list", 4) == 0 && isLogged)
             {
@@ -238,30 +239,6 @@ void Server::handleLogout(Server s, int clientSocket)
     // Send a confirmation message to the client
     sendMsg(clientSocket, "ricevuto_logout");
 }
-
-// #include "./crypto/Key_exchange.cpp"
-
-// void secure_connection(int clientSocket){
-//     auto p = Key_Exchange.getP();
-//     auto g = Key_Exchange.getG();
-//     auto publicKey = Key_Exchange.getPublicKey();
-//     send(clientSocket, &p, sizeof(p), 0);
-//     send(clientSocket, &g, sizeof(g), 0);
-//     send(clientSocket, &publicKey, sizeof(publicKey), 0);
-
-//     char recv_pub_key_client[2048] = "";
-//     recv(clientSocket, recv_pub_key_client, sizeof(recv_pub_key_client), 0);
-//     auto client_secret = Key_Exchange.setClientPublicKey(recv_pub_key_client);
-
-//     cout << "Client secret: " << client_secret << endl;
-//     string msg_c = "Connection established";
-
-//     for (int i = 0; i < msg_c.size(); i++)
-//         msg_c[i] = msg_c[i] ^ client_secret;
-
-//     cout<<"Encrypted message: "<<msg_c<<endl;
-
-// }
 
 void Server::start()
 {
@@ -436,6 +413,41 @@ void Server::handleListMessages(int clientSocket, int start, int end)
         return;
     }
 }
+
+// Funzione per generare un codice OTP di 6 numeri
+string generateOTP()
+{
+    const int OTP_LENGTH = 6;
+    const string digits = "0123456789";
+    string otp;
+
+    // Inizializzazione del generatore di numeri casuali
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<> dis(0, digits.size() - 1);
+
+    // Generazione del codice OTP
+    for (int i = 0; i < OTP_LENGTH; ++i)
+        otp += digits[dis(gen)];
+    return otp;
+}
+
+bool Server::handleRegistrationChallenge(int clientSocket)
+{
+    string otp = generateOTP();
+
+    // Invio del codice OTP al client tramite send o tramite inserimento in un file temporaneo condiviso
+    sendMsg(clientSocket, otp.c_str());
+
+    // ricezione del codice OTP inserito dal client
+    char message[2048] = "";
+    recvMsg(clientSocket, message);
+    string otp_received = std::string(message);
+
+    // Verifica del codice OTP
+    return strcmp(otp.c_str(), otp_received.c_str()) == 0;
+}
+
 bool Server::handleRegistration(int clientSocket)
 {
     char message[2048] = "";
@@ -456,14 +468,26 @@ bool Server::handleRegistration(int clientSocket)
     sendMsg(clientSocket, "ricevuto_password");
 
     recvMsg(clientSocket, message);
+    bool res = handleRegistrationChallenge(clientSocket);
+    cout<<"Handle registration challenge: "<<res<<"\n";
+    if (!res)
+    {
+        sendMsg(clientSocket, "denied_registration");
+        // recvMsg(clientSocket, message);
+        return false;
+    }
+    cout << "username: " << username << " password: " << password << " email: " << email << "\n";
     User u = User(username, password, email);
     ofstream file = ofstream(filenameUSR, ios::app);
     file << u.serialize() << "\n";
     file.close();
-    if (findUserOnFile(username.c_str(), password.c_str())){
+    if (findUserOnFile(username.c_str(), password.c_str()))
+    {
         sendMsg(clientSocket, "granted_registration");
         return true;
-    }else{
+    }
+    else
+    {
         sendMsg(clientSocket, "denied_registration");
         return false;
     }

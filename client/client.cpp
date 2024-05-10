@@ -43,6 +43,7 @@ private:
 
 public:
     bool handleRegistration();
+    bool handleRegistrationChallenge(int);
     bool handleLogin(int clientSocket);
     void handleAdd(int clientSocket);
     void handleList(int clientSocket);
@@ -131,6 +132,26 @@ bool ClientHandler::handleQuit(int clientSocket, bool isLogged)
     return handleExit(clientSocket);
 }
 
+string printCommands(int logged)
+{
+    string separator = "############################################\n";
+    string commands = separator+"Commands:\n";
+    if (!logged)
+    {
+        commands += "login: login to the system\n";
+        commands += "registration: register to the system\n";
+    }
+    else
+    {
+        commands += "add: add a new message on the board\n";
+        commands += "list: list the messages on the board\n";
+        commands += "get: get a message from the board\n";
+        commands += "logout: logout from the system\n";
+    }
+    commands += "exit: close the connection\n";
+    return commands+separator;
+}
+
 void ClientHandler::handle()
 {
     bool isExited = false;
@@ -140,6 +161,7 @@ void ClientHandler::handle()
         // nel caso in cui l'utente è guest, può solo fare login o registrazione
         // altrimenti può fare l'add, la list e la get
         string command = "";
+        cout << printCommands(isLogged);
         if (!isLogged)
         {
             cout << "Enter command: ";
@@ -196,6 +218,19 @@ void ClientHandler::handle()
     close(clientSocket);
 }
 
+bool ClientHandler::handleRegistrationChallenge(int socket)
+{
+
+    char otp_challenge[2048] = "";
+    recvMsg(socket, otp_challenge);
+
+    cout << "OTP Challenge: " << otp_challenge << "\n";
+    cout << "Sending back OTP Challenge\n";
+    sendMsg(socket, otp_challenge);
+
+    return true;
+}
+
 bool ClientHandler::handleRegistration()
 {
     string message = "registration";
@@ -234,9 +269,9 @@ bool ClientHandler::handleRegistration()
         return false;
 
     sendMsg(clientSocket, "ok");
+    (handleRegistrationChallenge(clientSocket));
     recvMsg(clientSocket, (response));
 
-    // TODO: inserire challenge email registration
     return (strcmp(response, "granted_registration") == 0);
 }
 
