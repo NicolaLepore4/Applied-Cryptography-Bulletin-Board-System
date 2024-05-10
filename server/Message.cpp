@@ -3,7 +3,7 @@
 #include "crypto/aes.cpp"
 using namespace std;
 
-
+const string delimiter = "/,";
 // Structure to represent a message
 class Message {
 private:
@@ -48,12 +48,12 @@ public:
     // Constructor to deserialize data
     Message::Message(char* data) {
         string str(data);
-        int identifier = stoi(str.substr(0, str.find(",")));
-        str = str.substr(str.find(",") + 1);
-        string title = str.substr(0, str.find(","));
-        str = str.substr(str.find(",") + 1);
-        string author = str.substr(0, str.find(","));
-        str = str.substr(str.find(",") + 1);
+        int identifier = stoi(str.substr(0, str.find(delimiter)));
+        str = str.substr(str.find(delimiter) + 2);
+        string title = str.substr(0, str.find(delimiter));
+        str = str.substr(str.find(delimiter) + 2);
+        string author = str.substr(0, str.find(delimiter));
+        str = str.substr(str.find(delimiter) + 2);
         string body = str;
         this->identifier = identifier;
         this->title = title;
@@ -99,10 +99,10 @@ public:
 
     // Serialize and deserialize functions
     string Message::serialize() {
-        return to_string(identifier) + "," + title + "," + author + "," + body;
+        return to_string(identifier) + delimiter + title + delimiter + author + delimiter + body;
     }
     string Message::serialize_for_list() {
-        return to_string(identifier) + "," + title + "," + author;
+        return to_string(identifier) + ";;" + title + ";," + author;
     }
 
     Message Message::deserialize(vector<unsigned char> data,string key, string iv) {
@@ -111,12 +111,12 @@ public:
         vector<unsigned char> data_dec = decrypt_AES(vec,  reinterpret_cast<const unsigned char*>(key.c_str()), reinterpret_cast<const unsigned char*>(iv.c_str()));
         string data2;
         data2 = string(data_dec.begin(), data_dec.end());
-        int identifier = stoi(data2.substr(0, data2.find(",")));
-        data2 = data2.substr(data2.find(",") + 1);
-        string title = data2.substr(0, data2.find(","));
-        data2 = data2.substr(data2.find(",") + 1);
-        string author = data2.substr(0, data2.find(","));
-        data2 = data2.substr(data2.find(",") + 1);
+        int identifier = stoi(data2.substr(0, data2.find(delimiter)));
+        data2 = data2.substr(data2.find(delimiter) + delimiter.size());
+        string title = data2.substr(0, data2.find(delimiter));
+        data2 = data2.substr(data2.find(delimiter) + delimiter.size());
+        string author = data2.substr(0, data2.find(delimiter));
+        data2 = data2.substr(data2.find(delimiter) + delimiter.size());
         string body = data2;
         return Message(identifier, title, author, body);
     }
