@@ -15,15 +15,21 @@ vector<std::vector<unsigned char>> readBytesFromFile(const std::string& filename
         throw std::runtime_error("Could not open file " + filename);
     }
 
-    // Leggi tutte le righe dal file
-    std::vector<std::vector<unsigned char>> lines;
+    // Leggi dal token /start al token /end
+    std::vector<std::vector<unsigned char>> result;
+    std::vector<unsigned char> buffer;
     std::string line;
+
+    // insert in buffer the lines between /start and /end and not the tokens
     while (std::getline(file, line)) {
-        std::vector<unsigned char> bytes(line.begin(), line.end());
-        lines.push_back(bytes);
+        if (line == "/start")
+            buffer.clear();
+        else if (line == "/end")
+            result.push_back(buffer);
+        else
+            buffer.insert(buffer.end(), line.begin(), line.end());
     }
-    
-    return lines;
+    return result;
 }
 
 // Class representing the Bulletin Board System
@@ -66,11 +72,17 @@ BBS::BBS(string filenameMSG, string key, string iv)
         return;
     }
     vector<std::vector<unsigned char>> dati = readBytesFromFile(filenameMSG);
-    for (auto &vec : dati)
-    {
-        Message m = Message::deserialize(vec, key, iv);
+
+    // each vector in dati has the following structure:
+    // /start
+    // <message>
+    // /end
+
+    for (auto& v : dati){
+        Message m = Message::deserialize(v, key, iv);
         messages.insert({m.getIdentifier(), m});
     }
+
     cout << "BBS loaded from file " << messages.size() << " messages" << endl;
 }
 // Method to list the latest n available messages in the BBS
@@ -123,7 +135,10 @@ void BBS::Add(string title, string author, string body)
     messages.insert({id, m});
     ofstream file(filenameMSG, ios::binary | ios::app);
     vector<unsigned char> enc_vec = encrypt_AES(m.serialize(), reinterpret_cast<const unsigned char *>(key.c_str()), reinterpret_cast<const unsigned char *>(iv.c_str()));
+    cout<< string(enc_vec.begin(), enc_vec.end()) << endl;
+    file.write("/start\n", strlen("/start\n"));
     file.write(reinterpret_cast<const char *>(enc_vec.data()), enc_vec.size());
+    file.write("\n/end\n", strlen("\n/end\n"));
 
     file.close();
     // funzione che scrive su file il messaggio
