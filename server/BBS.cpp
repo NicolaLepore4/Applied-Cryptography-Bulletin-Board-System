@@ -68,7 +68,6 @@ BBS::BBS(string filenameMSG, string key, string iv)
     vector<std::vector<unsigned char>> dati = readBytesFromFile(filenameMSG);
     for (auto &vec : dati)
     {
-        cout << "PRESOOOOO: "<< string(vec.begin(), vec.end()) <<"AAAAAAAAA"<< endl;
         Message m = Message::deserialize(vec, key, iv);
         messages.insert({m.getIdentifier(), m});
     }
@@ -77,6 +76,7 @@ BBS::BBS(string filenameMSG, string key, string iv)
 // Method to list the latest n available messages in the BBS
 set<Message> BBS::List(int start, int end)
 {
+    cout << "Selected " <<" selectedMessages.size()" << " messages" << endl;
     set<Message> selectedMessages;
     for (auto it = messages.begin(); it != messages.end(); ++it)
     {
@@ -86,6 +86,7 @@ set<Message> BBS::List(int start, int end)
             selectedMessages.insert(it->second);
         }
     }
+    
     return selectedMessages;
 }
 
@@ -100,14 +101,15 @@ Message BBS::Get(int mid)
 int BBS::retrieveLastId()
 {
     Message lastMessage;
-    if (!messages.empty())
+    int max = 0;
+    for (const auto& pair : messages) 
     {
-        auto lastElement = std::prev(messages.end());
-        int lastKey = lastElement->first;
-        lastMessage = lastElement->second;
+        if (max < pair.first)
+                max = pair.first;
     }
-    return lastMessage.getIdentifier();
+    return max;
 }
+    
 int BBS::size()
 {
     return messages.size();
@@ -121,7 +123,6 @@ void BBS::Add(string title, string author, string body)
     messages.insert({id, m});
     ofstream file(filenameMSG, ios::binary | ios::app);
     vector<unsigned char> enc_vec = encrypt_AES(m.serialize(), reinterpret_cast<const unsigned char *>(key.c_str()), reinterpret_cast<const unsigned char *>(iv.c_str()));
-    cout << "MESSOOOOO: "<< string(enc_vec.begin(), enc_vec.end()) << "AAAAAAAAA"<< endl;
     file.write(reinterpret_cast<const char *>(enc_vec.data()), enc_vec.size());
 
     file.close();
