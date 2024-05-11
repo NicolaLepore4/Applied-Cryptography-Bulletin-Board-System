@@ -102,7 +102,7 @@ public:
         return to_string(identifier) + delimiter + title + delimiter + author + delimiter + body;
     }
     string Message::serialize_for_list() {
-        return to_string(identifier) + ";;" + title + ";," + author;
+        return to_string(identifier) + ";;" + title + ";;" + author;
     }
 
     Message Message::deserialize(vector<unsigned char> data,string key, string iv) {
