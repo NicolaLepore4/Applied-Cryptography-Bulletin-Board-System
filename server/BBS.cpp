@@ -68,8 +68,7 @@ BBS::BBS(string filenameMSG, string key, string iv)
     this->filenameMSG = filenameMSG;
     if (filenameMSG == "")
     {
-        // TODO: throw exception or print error
-        return;
+        throw runtime_error("Filename of Message not specified");
     }
     vector<vector<unsigned char>> dati = readBytesFromFile(filenameMSG);
 
