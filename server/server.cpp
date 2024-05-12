@@ -450,8 +450,14 @@ bool Server::handleRegistrationChallenge(int clientSocket)
 {
     string otp = generateOTP();
 
-    // Invio del codice OTP al client tramite send o tramite inserimento in un file temporaneo condiviso
-    sendMsg(clientSocket, otp.c_str());
+    // Invio del codice OTP al client tramite inserimento in un file temporaneo condiviso
+    ofstream otpFile = ofstream("../client/otp.txt");
+    otpFile << otp << "\n";
+    otpFile.close();
+
+
+
+    sendMsg(clientSocket, "otp_sent");
 
     // ricezione del codice OTP inserito dal client
     char message[2048] = "";
@@ -490,14 +496,13 @@ bool Server::handleRegistration(int clientSocket)
     }
     recvMsg(clientSocket, message);
     bool res = handleRegistrationChallenge(clientSocket);
-    cout<<"Handle registration challenge: "<<res<<"\n";
     if (!res)
     {
         sendMsg(clientSocket, "denied_registration");
         // recvMsg(clientSocket, message);
         return false;
     }
-    cout << "username: " << username << " password: " << password << " email: " << email << "\n";
+    
     User u = User(username, password, email);
     if(checkUsernameOnFile(username.c_str()))
     {

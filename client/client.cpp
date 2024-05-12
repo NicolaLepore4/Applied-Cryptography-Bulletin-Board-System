@@ -36,9 +36,9 @@ private:
     {
         int size = 2048;
         read(clientSocket, msg, size);
-        cout << "__________________________________" << endl
-             << "Received message: " << msg << endl
-             << "__________________________________" << endl;
+        // cout << "__________________________________" << endl
+        //      << "Received message: " << msg << endl
+        //      << "__________________________________" << endl;
     }
 
 public:
@@ -224,9 +224,16 @@ bool ClientHandler::handleRegistrationChallenge(int socket)
     char otp_challenge[2048] = "";
     recvMsg(socket, otp_challenge);
 
-    cout << "OTP Challenge: " << otp_challenge << "\n";
+    if (strcmp(otp_challenge, "otp_sent") != 0)
+        return false;
+    cout<<"OTP Challenge received on file \"otp.txt\" in client folder\n";
+
+    string otp = "";
+    cout<<"Enter OTP: ";
+    cin>>otp;
+
     cout << "Sending back OTP Challenge\n";
-    sendMsg(socket, otp_challenge);
+    sendMsg(socket, otp.c_str());
 
     return true;
 }
