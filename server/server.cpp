@@ -23,9 +23,9 @@ class Server
 {
 private:
     // Chiave di crittografia (32 byte)
-    string key = "UnaChiaveSegretaMoltoLunga123456";
+    unsigned char* key = (unsigned char*) "UnaChiaveSegretaMoltoLunga12345";
     // Vettore di inizializzazione (16 byte)
-    string iv = "UnVettoreInizial";
+    unsigned char* iv = (unsigned char*) "UnVettoreInizia";
     const static int port = 12345; //,pubKey, privKey (?)
     const string ip = "127.0.0.1";
     int serverSocket;
@@ -126,7 +126,7 @@ void Server::handle(int clientSocket)
         string client_secret = generateSharedSecret(recv_pub_key_client, private_key);
         string msg_c = "Connection established 234567890";
 
-        auto enc_msg = encryptString(msg_c, reinterpret_cast<const unsigned char *>(client_secret.c_str()), size(client_secret));
+        auto enc_msg = encryptString(msg_c, reinterpret_cast<const unsigned char *>(client_secret.c_str()), client_secret.length());
 
         sendMsg(clientSocket, (enc_msg.first).c_str());
 

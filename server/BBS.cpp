@@ -7,28 +7,31 @@
 using namespace std;
 
 vector<vector<unsigned char>> readBytesFromFile(const string& filename) {
-    // Apri il file
     ifstream file(filename);
-
-    // Controlla se il file è stato aperto correttamente
     if (!file) {
         throw runtime_error("Could not open file " + filename);
     }
 
-    // Leggi dal token /start al token /end
     vector<vector<unsigned char>> result;
     vector<unsigned char> buffer;
     string line;
 
-    // insert in buffer the lines between /start and /end and not the tokens
     while (getline(file, line)) {
-        if (line == "/start")
+        if (line == "/start") {
             buffer.clear();
-        else if (line == "/end")
+        } else if (line == "/end") {
+            cout << "Buffer size: " << buffer.size() << endl;
+            cout << "Buffer: " << string(buffer.begin(),buffer.end()) << endl;
             result.push_back(buffer);
-        else
-            buffer.insert(buffer.end(), line.begin(), line.end());
+        } else {
+            for (size_t i = 0; i < line.length(); i += 2) {
+                string byteString = line.substr(i, 2);
+                unsigned char byte = static_cast<unsigned char>(stoi(byteString, nullptr, 16));
+                buffer.push_back(byte);
+            }
+        }
     }
+
     return result;
 }
 
@@ -39,11 +42,12 @@ private:
     // create hash map to store messages by id
     unordered_map<int, Message> messages;
     string filenameMSG = "";
-    string key, iv;
+    unsigned char* key;
+    unsigned char* iv;
 
 public:
     // Constructor to load messages from file
-    BBS(string filenameMSG, string key, string iv);
+    BBS(string filenameMSG, unsigned char* key, unsigned char* iv);
 
     // Method to list the latest n available messages in the BBS
     set<Message> List(int start, int end);
@@ -60,7 +64,7 @@ public:
     int retrieveLastId();
 };
 
-BBS::BBS(string filenameMSG, string key, string iv)
+BBS::BBS(string filenameMSG, unsigned char* key, unsigned char* iv)
 {
     this->key = key;
     this->iv = iv;
@@ -133,10 +137,18 @@ void BBS::Add(string title, string author, string body)
     Message m = Message(id, title, author, body);
     messages.insert({id, m});
     ofstream file(filenameMSG, ios::binary | ios::app);
-    vector<unsigned char> enc_vec = encrypt_AES(m.serialize(), reinterpret_cast<const unsigned char *>(key.c_str()), reinterpret_cast<const unsigned char *>(iv.c_str()));
-    cout<< string(enc_vec.begin(), enc_vec.end()) << endl;
+    unsigned char cipher[2048];
+    int cipher_len = encrypt(m.serialize(), m.serialize().size(), key, cipher, iv);
+    cout << "Encrypted size: " << cipher_len << endl;
+    cout<< "Encrypted text: " << cipher << endl;
+    vector<unsigned char> enc_vec(cipher, cipher + cipher_len);
+    std::ostringstream oss;
+    for (unsigned char c : enc_vec) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c);
+    }
+    cout<< oss.str() << endl;
     file.write("/start\n", strlen("/start\n"));
-    file.write(reinterpret_cast<const char *>(enc_vec.data()), enc_vec.size());
+    file.write(oss.str().c_str(), oss.str().length());
     file.write("\n/end\n", strlen("\n/end\n"));
 
     file.close();

@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-
+using namespace std;
 // Function to send email
 bool send_email(const string &from,
                 const string &to,

@@ -23,7 +23,7 @@ public:
     friend istream& operator>>(istream& is, Message& message);
     string serialize();
     string serialize_for_list();
-    static Message deserialize(vector<unsigned char> data,string key, string iv);
+    static Message deserialize(vector<unsigned char> data,unsigned char* key, unsigned char* iv);
 
     // create operator < and > for sorting
     bool operator<(const Message&) const;
@@ -105,10 +105,13 @@ public:
         return to_string(identifier) + ";;" + title + ";;" + author;
     }
 
-    Message Message::deserialize(vector<unsigned char> data,string key, string iv) {
-        
-        vector<unsigned char> vec(data.begin(), data.end());
-        vector<unsigned char> data_dec = decrypt_AES(vec,  reinterpret_cast<const unsigned char*>(key.c_str()), reinterpret_cast<const unsigned char*>(iv.c_str()));
+    Message Message::deserialize(vector<unsigned char> data,unsigned char* key, unsigned char* iv) {
+        unsigned char* cipher = reinterpret_cast<unsigned char*>(data.data());
+        unsigned char plaintext[2048];
+        int dec_size = decrypt(cipher, data.size(), key, plaintext, iv);
+        cout << "Decrypted size: " << dec_size << endl;
+        cout << "Decrypted text: " << plaintext << endl;
+        vector<unsigned char> data_dec(plaintext, plaintext + dec_size);
         string data2;
         data2 = string(data_dec.begin(), data_dec.end());
         int identifier = stoi(data2.substr(0, data2.find(delimiter)));
