@@ -510,6 +510,7 @@ bool Server::handleRegistration(int clientSocket)
     if (findUserOnFile(username.c_str(), password.c_str()))
     {
         sendMsg(clientSocket, "granted_registration");
+        users.push_back(Client(clientSocket, username, password));
         return true;
     }
     else
