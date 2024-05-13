@@ -20,8 +20,6 @@ vector<vector<unsigned char>> readBytesFromFile(const string& filename) {
         if (line == "/start") {
             buffer.clear();
         } else if (line == "/end") {
-            cout << "Buffer size: " << buffer.size() << endl;
-            cout << "Buffer: " << string(buffer.begin(),buffer.end()) << endl;
             result.push_back(buffer);
         } else {
             for (size_t i = 0; i < line.length(); i += 2) {
@@ -137,7 +135,7 @@ void BBS::Add(string title, string author, string body)
     Message m = Message(id, title, author, body);
     messages.insert({id, m});
     ofstream file(filenameMSG, ios::binary | ios::app);
-    unsigned char cipher[2048];
+    unsigned char cipher[4096]="";
     int cipher_len = encrypt(m.serialize(), m.serialize().size(), key, cipher, iv);
     cout << "Encrypted size: " << cipher_len << endl;
     cout<< "Encrypted text: " << cipher << endl;

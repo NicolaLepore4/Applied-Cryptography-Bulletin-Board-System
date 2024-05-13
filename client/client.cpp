@@ -28,7 +28,7 @@ private:
 
     void sendMsg(int clientSocket, const char *msg)
     {
-        int size = 2048;
+        int size = 4096;
         if (server_secret == "")
         {
             int n = send(clientSocket, msg, size, 0);
@@ -42,7 +42,7 @@ private:
 
         int msg_encrypt_first_len = msg_encrypt.second;
         send(clientSocket, to_string(msg_encrypt_first_len).c_str(), size, 0);
-        char response[2048] = "";
+        char response[4096] = "";
         recv(clientSocket, response, size, 0);
 
         int n = send(clientSocket, msg_encrypt.first.c_str(), msg_encrypt.first.size(), 0);
@@ -55,7 +55,7 @@ private:
 
     void recvMsg(int clientSocket, char *msg, bool decrypt = true)
     {
-        int size = 2048;
+        int size = 4096;
         recv(clientSocket, msg, size, 0);
         if (decrypt)
         {
@@ -110,7 +110,7 @@ ClientHandler::ClientHandler()
             throw runtime_error("Cannot generate keys");
 
         // receive the public key from the server
-        char server_public_key[2048] = "";
+        char server_public_key[4096] = "";
         recvMsg(serverSocket, server_public_key, false);
 
         // send the public key to the server
@@ -119,11 +119,11 @@ ClientHandler::ClientHandler()
         server_secret = generateSharedSecret(server_public_key, private_key);
 
         // receive challenge from server
-        char challenge[2048] = "";
+        char challenge[4096] = "";
         recvMsg(serverSocket, challenge, true);
 
         sendMsg(serverSocket, "challenge_received");
-        char challenge_len[2048] = "";
+        char challenge_len[4096] = "";
         recvMsg(serverSocket, challenge_len);
 
         string challenge_decrypt = decryptString(challenge, reinterpret_cast<const unsigned char *>(server_secret.c_str()), atoi(challenge_len));
@@ -133,7 +133,7 @@ ClientHandler::ClientHandler()
         auto challenge_encrypt = encryptString(challenge_decrypt + " client!1234567", reinterpret_cast<const unsigned char *>(server_secret.c_str()));
 
         sendMsg(serverSocket, to_string(challenge_encrypt.second).c_str());
-        char response[2048] = "";
+        char response[4096] = "";
         recvMsg(serverSocket, response);
         sendMsg(serverSocket, (challenge_encrypt.first).c_str());
 
@@ -249,7 +249,7 @@ void ClientHandler::handle()
 bool ClientHandler::handleRegistrationChallenge(int socket)
 {
 
-    char otp_challenge[2048] = "";
+    char otp_challenge[4096] = "";
     recvMsg(socket, otp_challenge);
 
     if (strcmp(otp_challenge, "otp_sent") != 0)
@@ -270,7 +270,7 @@ bool ClientHandler::handleRegistration()
 {
     string message = "registration";
     sendMsg(clientSocket, message.c_str());
-    char response[2048] = "";
+    char response[4096] = "";
     recvMsg(clientSocket, response);
     if (strcmp(response, "ricevuto_registration") != 0)
         return false;
@@ -349,7 +349,7 @@ void ClientHandler::handleList(int clientSocket)
     string msg = "list " + to_string(start) + " " + to_string(end);
     sendMsg(clientSocket, msg.c_str());
 
-    char message[2048] = "";
+    char message[4096] = "";
     recvMsg(clientSocket, message);
     // il server conferma la ricezione del comando
     if (strcmp(message, "ricevuto_list") != 0)
@@ -384,7 +384,7 @@ void ClientHandler::handleLogout()
     sendMsg(clientSocket, "logout");
 
     // check if server response with a "ricevuto_logout" message otherwise return
-    char message[2048] = "";
+    char message[4096] = "";
     recvMsg(clientSocket, (message));
     if (strcmp(message, "ricevuto_logout") != 0)
     {
@@ -409,7 +409,7 @@ bool ClientHandler::handleLogin(int clientSocket)
     // else return authenticated = false
     cerr << "handleLogin\n";
     sendMsg(clientSocket, "login");
-    char response[2048] = "";
+    char response[4096] = "";
     recvMsg(clientSocket, (response));
     cout << "Received: " << response << endl;
     if (strcmp(response, "ricevuto_login") != 0)
@@ -442,7 +442,7 @@ void ClientHandler::handleGet(int clientSocket)
 {
     // send get to server due to perform the get operation
     sendMsg(clientSocket, "get");
-    char message[2048] = "";
+    char message[4096] = "";
     // check if server response with a "ricevuto_get" message otherwise return
     recvMsg(clientSocket, message);
     if (strcmp(message, "ricevuto_get") != 0)
@@ -481,7 +481,7 @@ void ClientHandler::handleGet(int clientSocket)
 void ClientHandler::handleAdd(int clientSocket)
 {
     sendMsg(clientSocket, "add");
-    char message[2048] = "";
+    char message[4096] = "";
     recvMsg(clientSocket, message);
     // il server conferma la ricezione del comando
     if (strcmp(message, "ricevuto_add") == 0)

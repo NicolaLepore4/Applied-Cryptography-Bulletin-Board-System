@@ -108,10 +108,8 @@ public:
 
     Message Message::deserialize(vector<unsigned char> data,unsigned char* key, unsigned char* iv) {
         unsigned char* cipher = reinterpret_cast<unsigned char*>(data.data());
-        unsigned char plaintext[2048];
+        unsigned char plaintext[4096]="";
         int dec_size = decrypt(cipher, data.size(), key, plaintext, iv);
-        cout << "Decrypted size: " << dec_size << endl;
-        cout << "Decrypted text: " << plaintext << endl;
         vector<unsigned char> data_dec(plaintext, plaintext + dec_size);
         string data2;
         data2 = string(data_dec.begin(), data_dec.end());

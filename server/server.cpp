@@ -67,12 +67,10 @@ public:
         {
             auto enc_msg = encryptString(msg, reinterpret_cast<const unsigned char *>(client_secret.c_str()));
             // auto enc_msg = encryptString(msg, reinterpret_cast<const unsigned char*>("UnaChiaveSegretaMoltoLunga12345"));
-            auto size = 2048;
-            cout << "Sending: " << enc_msg.second << "\n";
+            auto size = 4096;
             send(clientSocket, (to_string(enc_msg.second)).c_str(), size, 0);
-            char response[2048] = "";
+            char response[4096] = "";
             recv(clientSocket, response, size, 0);
-            cout << "Response: " << response << "\n";
             int n = send(clientSocket, (enc_msg.first).c_str(), enc_msg.first.size(), 0);
             if (n < 0)
             {
@@ -85,7 +83,7 @@ public:
 
     void recvMsg(int clientSocket, char *msg, string client_secret)
     {
-        int size = 2048;
+        int size = 4096;
         int n = recv(clientSocket, msg, size, 0);
         if (n < 0)
         {
@@ -154,7 +152,7 @@ void Server::handle(int clientSocket)
             throw runtime_error("Error generating keys");
 
         sendMsg(clientSocket, public_key.c_str(), "");
-        char recv_pub_key_client[2048] = "";
+        char recv_pub_key_client[4096] = "";
         recvMsg(clientSocket, recv_pub_key_client, "");
 
         string client_secret = generateSharedSecret(recv_pub_key_client, private_key);
@@ -166,18 +164,18 @@ void Server::handle(int clientSocket)
 
         sendMsg(clientSocket, (enc_msg.first).c_str(), client_secret);
 
-        char response[2048] = "";
+        char response[4096] = "";
         recvMsg(clientSocket, response, client_secret);
         sendMsg(clientSocket, (to_string(enc_msg.second)).c_str(), client_secret);
 
-        char challenge[2048] = "";
-        char challenge_len[2048] = "";
+        char challenge[4096] = "";
+        char challenge_len[4096] = "";
         recvMsg(clientSocket, challenge_len, client_secret);
         sendMsg(clientSocket, "ricevuto_challenge_len", client_secret);
         recvMsg(clientSocket, challenge, client_secret);
 
         bool isLogged = false;
-        char command[2048] = "";
+        char command[4096] = "";
         while (true)
         {
             memset(command, 0, sizeof(command));
@@ -251,11 +249,11 @@ bool Server::handleLogin(int clientSocket, string client_secret)
 {
     // assume that already read login command
     sendMsg(clientSocket, "ricevuto_login", client_secret);
-    char username[2048] = "";
+    char username[4096] = "";
     recvMsg(clientSocket, username, client_secret);
     sendMsg(clientSocket, "ricevuto_username", client_secret);
 
-    char password[2048] = "";
+    char password[4096] = "";
     recvMsg(clientSocket, password, client_secret);
     sendMsg(clientSocket, "ricevuto_password", client_secret);
 
@@ -302,6 +300,7 @@ void Server::start()
             sockaddr_in clientAddress{};
             socklen_t clientLen = sizeof(clientAddress);
             // 2.2. Accept a new client connection
+            cout << "Waiting for a connection...\n";
             int clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddress, &clientLen);
             // 2.3. Error handling for failed connection acceptance
             if (clientSocket < 0)
@@ -339,7 +338,7 @@ Message Server::findMsgOnFile(char *identifier)
 void Server::handleGetMessages(int clientSocket, string client_secret)
 {
     sendMsg(clientSocket, "ricevuto_get", client_secret);
-    char message[2048] = "";
+    char message[4096] = "";
     recvMsg(clientSocket, message, client_secret);
     // expecting message identifier to be "get"
     cout << "message: " << message << "\n";
@@ -374,7 +373,7 @@ pair<string, string> Server::extractNoteDetails(const string &note)
 }
 void Server::handleAddMessages(int clientSocket, string client_secret)
 {
-    char message[2048] = "";
+    char message[4096] = "";
     sendMsg(clientSocket, "ricevuto_add", client_secret);
     recvMsg(clientSocket, message, client_secret);
     try
@@ -411,7 +410,7 @@ void Server::handleListMessages(int clientSocket, int start, int end, string cli
 {
     try
     {
-        char message[2048] = "";
+        char message[4096] = "";
         sendMsg(clientSocket, "ricevuto_list", client_secret);
         recvMsg(clientSocket, message, client_secret);
         if (strcmp(message, "ok") != 0)
@@ -426,7 +425,7 @@ void Server::handleListMessages(int clientSocket, int start, int end, string cli
             }
             // restituisce gli ultimi numMsg all'interno di BBS
             set<Message> messages = board.List(start, end);
-            char n_elements[2048] = "";
+            char n_elements[4096] = "";
             for (auto msg : messages)
             {
                 // Serialize the message and send it
@@ -492,7 +491,7 @@ bool Server::handleRegistrationChallenge(int clientSocket, string client_secret)
     sendMsg(clientSocket, "otp_sent", client_secret);
 
     // ricezione del codice OTP inserito dal client
-    char message[2048] = "";
+    char message[4096] = "";
     recvMsg(clientSocket, message, client_secret);
     string otp_received = string(message);
 
@@ -502,7 +501,7 @@ bool Server::handleRegistrationChallenge(int clientSocket, string client_secret)
 
 bool Server::handleRegistration(int clientSocket, string client_secret)
 {
-    char message[2048] = "";
+    char message[4096] = "";
     sendMsg(clientSocket, "ricevuto_registration", client_secret);
     string username = "", password = "", email = "";
     recvMsg(clientSocket, message, client_secret);
