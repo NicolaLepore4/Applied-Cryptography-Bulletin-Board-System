@@ -24,21 +24,48 @@ private:
     int clientSocket;
     bool isLogged = false;
     string username;
-    string public_key, private_key, server_secret;
+    string public_key, private_key, server_secret = "";
 
     void sendMsg(int clientSocket, const char *msg)
     {
         int size = 2048;
-        send(clientSocket, msg, size, 0);
+        if (server_secret == "")
+        {
+            int n = send(clientSocket, msg, size, 0);
+            if (n < 0)
+            {
+                throw runtime_error("Cannot send message");
+            }
+            return;
+        }
+        auto msg_encrypt = encryptString(msg, reinterpret_cast<const unsigned char *>(server_secret.c_str()));
+
+        int msg_encrypt_first_len = msg_encrypt.second;
+        send(clientSocket, to_string(msg_encrypt_first_len).c_str(), size, 0);
+        char response[2048] = "";
+        recv(clientSocket, response, size, 0);
+
+        int n = send(clientSocket, msg_encrypt.first.c_str(), msg_encrypt.first.size(), 0);
+
+        if (n < 0)
+        {
+            throw runtime_error("Cannot send message");
+        }
     }
 
-    void recvMsg(int clientSocket, char *msg)
+    void recvMsg(int clientSocket, char *msg, bool decrypt = true)
     {
         int size = 2048;
-        read(clientSocket, msg, size);
-        // cout << "__________________________________" << endl
-        //      << "Received message: " << msg << endl
-        //      << "__________________________________" << endl;
+        recv(clientSocket, msg, size, 0);
+        if (decrypt)
+        {
+            size_t server_secret_len = atoi(msg);
+            send(clientSocket, "ricevuto", size, 0);
+            recv(clientSocket, msg, size, 0);
+            string msg_decrypt = decryptString(msg, reinterpret_cast<const unsigned char *>(server_secret.c_str()), server_secret_len);
+
+            strcpy(msg, msg_decrypt.c_str());
+        }
     }
 
 public:
@@ -84,16 +111,16 @@ ClientHandler::ClientHandler()
 
         // receive the public key from the server
         char server_public_key[2048] = "";
-        recvMsg(serverSocket, server_public_key);
-
-        server_secret = generateSharedSecret(server_public_key, private_key);
+        recvMsg(serverSocket, server_public_key, false);
 
         // send the public key to the server
         sendMsg(serverSocket, public_key.c_str());
 
+        server_secret = generateSharedSecret(server_public_key, private_key);
+
         // receive challenge from server
         char challenge[2048] = "";
-        recvMsg(serverSocket, challenge);
+        recvMsg(serverSocket, challenge, true);
 
         sendMsg(serverSocket, "challenge_received");
         char challenge_len[2048] = "";
@@ -103,7 +130,8 @@ ClientHandler::ClientHandler()
 
         // send the challenge to the server
 
-        auto challenge_encrypt = encryptString(challenge_decrypt + " client!1234567", reinterpret_cast<const unsigned char *>(server_secret.c_str()), size(server_secret));
+        auto challenge_encrypt = encryptString(challenge_decrypt + " client!1234567", reinterpret_cast<const unsigned char *>(server_secret.c_str()));
+
         sendMsg(serverSocket, to_string(challenge_encrypt.second).c_str());
         char response[2048] = "";
         recvMsg(serverSocket, response);
@@ -135,7 +163,7 @@ bool ClientHandler::handleQuit(int clientSocket, bool isLogged)
 string printCommands(int logged)
 {
     string separator = "############################################\n";
-    string commands = separator+"Commands:\n";
+    string commands = separator + "Commands:\n";
     if (!logged)
     {
         commands += "login: login to the system\n";
@@ -149,7 +177,7 @@ string printCommands(int logged)
         commands += "logout: logout from the system\n";
     }
     commands += "exit: close the connection\n";
-    return commands+separator;
+    return commands + separator;
 }
 
 void ClientHandler::handle()
@@ -226,11 +254,11 @@ bool ClientHandler::handleRegistrationChallenge(int socket)
 
     if (strcmp(otp_challenge, "otp_sent") != 0)
         return false;
-    cout<<"OTP Challenge received on file \"otp.txt\" in client folder\n";
+    cout << "OTP Challenge received on file \"otp.txt\" in client folder\n";
 
     string otp = "";
-    cout<<"Enter OTP: ";
-    cin>>otp;
+    cout << "Enter OTP: ";
+    cin >> otp;
 
     cout << "Sending back OTP Challenge\n";
     sendMsg(socket, otp.c_str());
@@ -266,7 +294,8 @@ bool ClientHandler::handleRegistration()
 
     if (strcmp(response, "ricevuto_email") != 0)
         return false;
-    while(true){
+    while (true)
+    {
         cout << "Enter password: ";
         getline(cin, password);
         sendMsg(clientSocket, password.c_str());
@@ -274,7 +303,8 @@ bool ClientHandler::handleRegistration()
 
         if (strcmp(response, "ricevuto_password") != 0)
             continue;
-        else break;
+        else
+            break;
     }
     sendMsg(clientSocket, "ok");
     (handleRegistrationChallenge(clientSocket));
@@ -381,6 +411,7 @@ bool ClientHandler::handleLogin(int clientSocket)
     sendMsg(clientSocket, "login");
     char response[2048] = "";
     recvMsg(clientSocket, (response));
+    cout << "Received: " << response << endl;
     if (strcmp(response, "ricevuto_login") != 0)
         return false;
     string username;
