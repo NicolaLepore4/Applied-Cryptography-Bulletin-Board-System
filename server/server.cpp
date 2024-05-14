@@ -119,19 +119,15 @@ Server::Server()
         sockaddr_in serverAddress{};
         serverSocket = socket(AF_INET, SOCK_STREAM, 0);
         if (serverSocket < 0)
-        {
             throw runtime_error(ERROR_SOCKET);
-        }
 
         serverAddress.sin_family = AF_INET;
         serverAddress.sin_port = htons(port);
         if (inet_pton(AF_INET, ip.c_str(), &serverAddress.sin_addr) <= 0)
-        {
             if (errno == EAFNOSUPPORT)
                 throw runtime_error(ERROR_ADDRESS);
             else
                 throw runtime_error(ERROR_ADDRESS_INVALID);
-        }
 
         bind(serverSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress));
     }
@@ -342,11 +338,11 @@ pair<string, string> Server::extractNoteDetails(const string &note)
 {
     size_t titleStart = note.find(NOTA_TITLE);
     size_t titleEnd = note.find("\n");
-    string title = note.substr(titleStart + 7, titleEnd - titleStart - 7);
+    string title = note.substr(titleStart + NOTA_TITLE.length(), titleEnd - titleStart - NOTA_TITLE.length());
 
     size_t bodyStart = note.find(NOTA_BODY, titleEnd);
     size_t bodyEnd = note.find("\n", bodyStart);
-    string body = note.substr(bodyStart + 6, bodyEnd - bodyStart - 6);
+    string body = note.substr(bodyStart + NOTA_BODY.length(), bodyEnd - bodyStart - NOTA_BODY.length());
     return {title, body};
 }
 void Server::handleAddMessages(int clientSocket, string client_secret)

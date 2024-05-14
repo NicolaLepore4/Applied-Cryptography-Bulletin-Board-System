@@ -83,20 +83,16 @@ ClientHandler::ClientHandler()
     {
         int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
         if (serverSocket < 0)
-        {
             throw runtime_error(ERROR_SOCKET);
-        }
 
         sockaddr_in serverAddress{};
         serverAddress.sin_family = AF_INET;
         serverAddress.sin_port = htons(port);
         if (inet_pton(AF_INET, ip.c_str(), &serverAddress.sin_addr) <= 0)
-        {
             if (errno == EAFNOSUPPORT)
                 throw runtime_error(ERROR_ADDRESS);
             else
                 throw runtime_error(ERROR_ADDRESS_INVALID);
-        }
 
         if (connect(serverSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0)
             throw runtime_error(SERVER_UNAVAILABLE);
@@ -297,7 +293,7 @@ bool ClientHandler::handleRegistration()
             break;
     }
     sendMsg(clientSocket, OK.c_str());
-    (handleRegistrationChallenge(clientSocket));
+    handleRegistrationChallenge(clientSocket);
     recvMsg(clientSocket, (response));
 
     return (strcmp(response, REGISTRATION_OK.c_str()) == 0);
@@ -363,7 +359,7 @@ void ClientHandler::handleList(int clientSocket)
                 sendMsg(clientSocket, OK.c_str());
             }
         }
-        sendMsg(clientSocket, END.c_str());
+        sendMsg(clientSocket, STOP.c_str());
     }
 }
 
@@ -457,11 +453,10 @@ void ClientHandler::handleGet(int clientSocket)
     Message msg = Message(message);
     sendMsg(clientSocket, END.c_str());
     if (msg.getTitle() == "" && msg.getBody() == "")
-    {
+
         cout << ERROR_MSG_EMPTY << endl;
-        return;
-    }
-    cout << msg;
+    else
+        cout << msg;
 }
 void ClientHandler::handleAdd(int clientSocket)
 {
@@ -474,28 +469,24 @@ void ClientHandler::handleAdd(int clientSocket)
         // crea la nota da inviare con titolo e body
         string note;
         string temp;
-        cout << NOTA_NEW_PROMPT;
+        cout << NOTA_NEW_PROMPT << endl;
         cout << NOTA_TITLE_PROMPT;
         getline(cin, temp);
         note += NOTA_TITLE + temp + "\n";
         cout << NOTA_BODY_PROMPT;
         getline(cin, temp);
-        note += NOTA_BODY + temp + "\n";
-        //
+        note += NOTA_BODY + temp;
+        
         // invio la nota
         sendMsg(clientSocket, note.c_str());
         // ricevo la conferma della nota
         recvMsg(clientSocket, message);
         if (strcmp(message, CMD_NOTA_RCV.c_str()) != 0)
-        {
             cout << INVALID_NOTA << endl;
-            return;
-        }
         else if (strcmp(message, CMD_NOTA_RCV.c_str()) == 0)
         {
             cout << CMD_NOTA_SAVED << endl;
-            sendMsg(clientSocket, END.c_str());
-            return;
+            sendMsg(clientSocket, STOP.c_str());
         }
     }
     else // se il comando non è stato accettato dal server
