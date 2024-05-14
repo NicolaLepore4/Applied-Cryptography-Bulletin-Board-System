@@ -10,8 +10,8 @@
 #include <cstring>
 
 #include "../server/Message.cpp"
-
 #include "../server/crypto/key_exchange.cpp"
+#include "../common/protocol.cpp"
 
 using namespace std;
 
@@ -33,9 +33,7 @@ private:
         {
             int n = send(clientSocket, msg, size, 0);
             if (n < 0)
-            {
-                throw runtime_error("Cannot send message");
-            }
+                throw runtime_error(ERROR_MSG_SENT);
             return;
         }
         auto msg_encrypt = encryptString(msg, reinterpret_cast<const unsigned char *>(server_secret.c_str()));
@@ -48,9 +46,7 @@ private:
         int n = send(clientSocket, msg_encrypt.first.c_str(), msg_encrypt.first.size(), 0);
 
         if (n < 0)
-        {
-            throw runtime_error("Cannot send message");
-        }
+            throw runtime_error(ERROR_MSG_SENT);
     }
 
     void recvMsg(int clientSocket, char *msg, bool decrypt = true)
@@ -63,7 +59,6 @@ private:
             send(clientSocket, "ricevuto", size, 0);
             recv(clientSocket, msg, size, 0);
             string msg_decrypt = decryptString(msg, reinterpret_cast<const unsigned char *>(server_secret.c_str()), server_secret_len);
-
             strcpy(msg, msg_decrypt.c_str());
         }
     }
@@ -89,7 +84,7 @@ ClientHandler::ClientHandler()
         int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
         if (serverSocket < 0)
         {
-            throw runtime_error("Cannot create socket");
+            throw runtime_error(ERROR_SOCKET);
         }
 
         sockaddr_in serverAddress{};
@@ -98,16 +93,16 @@ ClientHandler::ClientHandler()
         if (inet_pton(AF_INET, ip.c_str(), &serverAddress.sin_addr) <= 0)
         {
             if (errno == EAFNOSUPPORT)
-                throw runtime_error("Address family not supported");
+                throw runtime_error(ERROR_ADDRESS);
             else
-                throw runtime_error("Invalid address");
+                throw runtime_error(ERROR_ADDRESS_INVALID);
         }
 
         if (connect(serverSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0)
-            throw runtime_error("Cannot connect to server");
+            throw runtime_error(SERVER_UNAVAILABLE);
 
         if (!generateKeyPair(public_key, private_key))
-            throw runtime_error("Cannot generate keys");
+            throw runtime_error(ERROR_KEYPAIR);
 
         // receive the public key from the server
         char server_public_key[4096] = "";
@@ -120,9 +115,10 @@ ClientHandler::ClientHandler()
 
         // receive challenge from server
         char challenge[4096] = "";
-        recvMsg(serverSocket, challenge, true);
+        recvMsg(serverSocket, challenge);
+        cout << challenge << endl;
 
-        sendMsg(serverSocket, "challenge_received");
+        sendMsg(serverSocket, CHALLENGE_RCV.c_str());
         char challenge_len[4096] = "";
         recvMsg(serverSocket, challenge_len);
 
@@ -137,7 +133,7 @@ ClientHandler::ClientHandler()
         recvMsg(serverSocket, response);
         sendMsg(serverSocket, (challenge_encrypt.first).c_str());
 
-        cerr << "connected to server\n";
+        cerr << SERVER_CONNECTED << endl;
         clientSocket = serverSocket;
         handle();
     }
@@ -149,7 +145,7 @@ ClientHandler::ClientHandler()
 
 bool ClientHandler::handleExit(int clientSocket)
 {
-    cout << "Closing  connection with server...." << endl;
+    cout << CLOSING_SOCKET_CLT << endl;
     exit(0);
 }
 
@@ -166,17 +162,17 @@ string printCommands(int logged)
     string commands = separator + "Commands:\n";
     if (!logged)
     {
-        commands += "login: login to the system\n";
-        commands += "registration: register to the system\n";
+        commands += CMD_LOGIN + ": login to the system\n";
+        commands += CMD_REGISTRATION + ": register to the system\n";
     }
     else
     {
-        commands += "add: add a new message on the board\n";
-        commands += "list: list the messages on the board\n";
-        commands += "get: get a message from the board\n";
-        commands += "logout: logout from the system\n";
+        commands += CMD_ADD + ": add a new message on the board\n";
+        commands += CMD_LIST + ": list the messages on the board\n";
+        commands += CMD_GET + ": get a message from the board\n";
+        commands += CMD_LOGOUT + ": logout from the system\n";
     }
-    commands += "exit: close the connection\n";
+    commands += CMD_EXIT + ": close the connection\n";
     return commands + separator;
 }
 
@@ -192,55 +188,53 @@ void ClientHandler::handle()
         cout << printCommands(isLogged);
         if (!isLogged)
         {
-            cout << "Enter command: ";
+            cout << PROMPT_COMMAND;
             getline(cin, command);
-            if (command == "login")
+            if (command == CMD_LOGIN)
             {
                 isLogged = handleLogin(clientSocket);
                 if (isLogged)
-                    cout << "Login successful\n";
+                    cout << LOGIN_OK << endl;
                 else
-                    cout << "Login failed\n";
+                    cout << LOGIN_FAIL << endl;
             }
-            else if (command == "registration")
+            else if (command == CMD_REGISTRATION)
             {
                 isLogged = handleRegistration();
                 if (isLogged)
-                    cout << "Registration successful\n";
+                    cout << REGISTRATION_OK_FULL << endl;
                 else
-                    cout << "Registration failed\n";
+                    cout << REGISTRATION_FAIL << endl;
             }
-            else if (command == "add" || command == "list" || command == "get" || command == "logout")
-                cout << "You need to login first\n";
-            else if (command == "exit" || command == "quit")
+            else if (command == CMD_ADD || command == CMD_LIST || command == CMD_GET || command == CMD_LOGOUT)
+                cout << LOGIN_REQUIRED << endl;
+            else if (command == CMD_EXIT || command == CMD_QUIT)
                 isExited = handleQuit(clientSocket, isLogged);
-            else if (command == "closing")
+            else if (command == CMD_CLOSING)
                 isExited = handleExit(clientSocket);
             else
-                cout << "You entered an invalid command while not logged!\n";
+                cout << INVALID_COMMAND << endl;
         }
         else
         {
-            cout << "Enter command: ";
+            cout << PROMPT_COMMAND;
             getline(cin, command);
-            if (command == "add")
+            if (command == CMD_ADD)
                 handleAdd(clientSocket);
-            else if (command == "list")
+            else if (command == CMD_LIST)
                 handleList(clientSocket);
-            else if (command == "get")
+            else if (command == CMD_GET)
                 handleGet(clientSocket);
-            else if (command == "logout")
+            else if (command == CMD_LOGOUT)
                 handleLogout();
-            else if (command == "login")
-                cout << "You are already logged in\n";
-            else if (command == "registration")
-                cout << "You are already logged in\n";
-            else if (command == "exit" || command == "quit")
+            else if (command == CMD_LOGIN || command == CMD_REGISTRATION)
+                cout << ALREADY_LOGGED_IN << endl;
+            else if (command == CMD_EXIT || command == CMD_QUIT)
                 isExited = handleQuit(clientSocket, isLogged);
-            else if (command == "closing")
+            else if (command == CMD_CLOSING)
                 isExited = handleExit(clientSocket);
             else
-                cout << "You entered an invalid command\n";
+                cout << INVALID_COMMAND << endl;
         }
     }
     close(clientSocket);
@@ -252,15 +246,15 @@ bool ClientHandler::handleRegistrationChallenge(int socket)
     char otp_challenge[4096] = "";
     recvMsg(socket, otp_challenge);
 
-    if (strcmp(otp_challenge, "otp_sent") != 0)
+    if (strcmp(otp_challenge, OTP_SENT.c_str()) != 0)
         return false;
-    cout << "OTP Challenge received on file \"otp.txt\" in client folder\n";
+    cout << OTP_GENERATED_PROMPT << endl;
 
     string otp = "";
-    cout << "Enter OTP: ";
+    cout << OTP_PROMPT_ENTER;
     cin >> otp;
 
-    cout << "Sending back OTP Challenge\n";
+    cout << OTP_PROMPT_BACK << endl;
     sendMsg(socket, otp.c_str());
 
     return true;
@@ -268,49 +262,45 @@ bool ClientHandler::handleRegistrationChallenge(int socket)
 
 bool ClientHandler::handleRegistration()
 {
-    string message = "registration";
+    string message = CMD_REGISTRATION;
     sendMsg(clientSocket, message.c_str());
     char response[4096] = "";
     recvMsg(clientSocket, response);
-    if (strcmp(response, "ricevuto_registration") != 0)
+    if (strcmp(response, CMD_REGISTRATION_RCV.c_str()) != 0)
         return false;
 
-    string username;
-    string email;
-    string password;
+    string username, email, password;
 
-    cout << "Enter username: ";
+    cout << PROMPT_USERNAME;
     getline(cin, username);
     sendMsg(clientSocket, username.c_str());
     recvMsg(clientSocket, (response));
 
-    if (strcmp(response, "ricevuto_username") != 0)
+    if (strcmp(response, CMD_USERNAME_RCV.c_str()) != 0)
         return false;
 
-    cout << "Enter email: ";
+    cout << PROMPT_EMAIL;
     getline(cin, email);
     sendMsg(clientSocket, email.c_str());
     recvMsg(clientSocket, (response));
 
-    if (strcmp(response, "ricevuto_email") != 0)
+    if (strcmp(response, CMD_EMAIL_RCV.c_str()) != 0)
         return false;
     while (true)
     {
-        cout << "Enter password: ";
+        cout << PROMPT_PASSWORD;
         getline(cin, password);
         sendMsg(clientSocket, password.c_str());
         recvMsg(clientSocket, (response));
 
-        if (strcmp(response, "ricevuto_password") != 0)
-            continue;
-        else
+        if (strcmp(response, CMD_PASSWORD_RCV.c_str()) == 0)
             break;
     }
-    sendMsg(clientSocket, "ok");
+    sendMsg(clientSocket, OK.c_str());
     (handleRegistrationChallenge(clientSocket));
     recvMsg(clientSocket, (response));
 
-    return (strcmp(response, "granted_registration") == 0);
+    return (strcmp(response, REGISTRATION_OK.c_str()) == 0);
 }
 
 void ClientHandler::handleList(int clientSocket)
@@ -321,7 +311,7 @@ void ClientHandler::handleList(int clientSocket)
     bool validInput = false;
     while (!validInput)
     {
-        cout << "Element from: ";
+        cout << PROMPT_LIST_FROM;
         getline(cin, number);
         try
         {
@@ -330,10 +320,10 @@ void ClientHandler::handleList(int clientSocket)
         }
         catch (const exception &e)
         {
-            cout << "Invalid input. Please enter an integer.\n";
+            cout << INTEGER_REQUIRED << endl;
             validInput = false;
         }
-        cout << "to: ";
+        cout << PROMPT_LIST_TO;
         getline(cin, number);
         try
         {
@@ -342,57 +332,55 @@ void ClientHandler::handleList(int clientSocket)
         }
         catch (const exception &e)
         {
-            cout << "Invalid input. Please enter an integer.\n";
+            cout << INTEGER_REQUIRED << endl;
             validInput = false;
         }
     }
-    string msg = "list " + to_string(start) + " " + to_string(end);
+    string msg = CMD_LIST + " " + to_string(start) + " " + to_string(end);
     sendMsg(clientSocket, msg.c_str());
 
     char message[4096] = "";
     recvMsg(clientSocket, message);
     // il server conferma la ricezione del comando
-    if (strcmp(message, "ricevuto_list") != 0)
+    if (strcmp(message, CMD_LIST_RCV.c_str()) != 0)
     {
-        cout << "ERROR IN NOTA\n";
+        cout << INVALID_NOTA << endl;
         return;
     }
     else
     {
-        cout << "comando ricevuto\n";
-        sendMsg(clientSocket, "ok");
+        cout << CMD_RCV << endl;
+        sendMsg(clientSocket, OK.c_str());
         while (true)
         {
             memset(message, 0, sizeof(message));
             recvMsg(clientSocket, message);
-            if (strcmp(message, "stop") == 0)
-            {
+            if (strcmp(message, STOP.c_str()) == 0)
                 break;
-            }
             else
             {
                 cout << message << endl;
-                sendMsg(clientSocket, "ok");
+                sendMsg(clientSocket, OK.c_str());
             }
         }
-        sendMsg(clientSocket, "fine");
+        sendMsg(clientSocket, END.c_str());
     }
 }
 
 void ClientHandler::handleLogout()
 {
-    sendMsg(clientSocket, "logout");
+    sendMsg(clientSocket, CMD_LOGOUT.c_str());
 
     // check if server response with a "ricevuto_logout" message otherwise return
     char message[4096] = "";
     recvMsg(clientSocket, (message));
-    if (strcmp(message, "ricevuto_logout") != 0)
+    if (strcmp(message, CMD_LOGOUT_RCV.c_str()) != 0)
     {
-        cout << "ERROR IN LOGOUT\n";
+        cout << CMD_LOGOUT_ERROR << endl;
         return;
     }
     else
-        cout << "Logout successful\n";
+        cout << CMD_LOGOUT_OK << endl;
 
     isLogged = false;
 }
@@ -407,114 +395,111 @@ bool ClientHandler::handleLogin(int clientSocket)
     // check if server response with a "ricevuto_password" message otherwise return false
     // if so then return authenticated = true
     // else return authenticated = false
-    cerr << "handleLogin\n";
-    sendMsg(clientSocket, "login");
+    sendMsg(clientSocket, CMD_LOGIN.c_str());
     char response[4096] = "";
     recvMsg(clientSocket, (response));
-    cout << "Received: " << response << endl;
-    if (strcmp(response, "ricevuto_login") != 0)
+    if (strcmp(response, CMD_LOGIN_RCV.c_str()) != 0)
         return false;
     string username;
     string password;
-    cout << "Enter username: ";
+    cout << PROMPT_USERNAME;
     getline(cin, username);
 
     sendMsg(clientSocket, username.c_str());
 
     recvMsg(clientSocket, response);
-    if (strcmp(response, "ricevuto_username") != 0)
+    if (strcmp(response, CMD_USERNAME_RCV.c_str()) != 0)
         return false;
 
-    cout << "Enter password: ";
+    cout << PROMPT_PASSWORD;
     getline(cin, password);
 
     sendMsg(clientSocket, password.c_str());
     recvMsg(clientSocket, (response));
 
-    if (strcmp(response, "ricevuto_password") != 0)
+    if (strcmp(response, CMD_PASSWORD_RCV.c_str()) != 0)
         return false;
 
     recvMsg(clientSocket, response);
-    return strcmp(response, "granted_login") == 0;
+    return strcmp(response, CMD_LOGIN_OK.c_str()) == 0;
 }
 
 void ClientHandler::handleGet(int clientSocket)
 {
     // send get to server due to perform the get operation
-    sendMsg(clientSocket, "get");
+    sendMsg(clientSocket, CMD_GET.c_str());
     char message[4096] = "";
     // check if server response with a "ricevuto_get" message otherwise return
     recvMsg(clientSocket, message);
-    if (strcmp(message, "ricevuto_get") != 0)
+    if (strcmp(message, CMD_GET_RCV.c_str()) != 0)
     {
-        cout << "ERROR IN GET\n";
+        cout << INVALID_GET << endl;
         return;
     }
 
     string msgId = "";
-    cout << "Insert the identifier of the message to search: ";
+    cout << CMD_GET_SEARCH_PROMPT;
     getline(cin, msgId);
     // send the message id to the server
     sendMsg(clientSocket, msgId.c_str());
     // check if server response with a "ok" message otherwise return
     recvMsg(clientSocket, message);
-    if (strcmp(message, "error") == 0)
+    if (strcmp(message, ERROR.c_str()) == 0)
     {
-        cout << "Message not found!" << endl;
+        cout << ERROR_MSG_NOT_FOUND << endl;
         return;
     }
 
-    sendMsg(clientSocket, "ok");
+    sendMsg(clientSocket, OK.c_str());
 
     // return the message from the server
     recvMsg(clientSocket, message);
     Message msg = Message(message);
-    sendMsg(clientSocket, "fine");
+    sendMsg(clientSocket, END.c_str());
     if (msg.getTitle() == "" && msg.getBody() == "")
     {
-        cout << "Message empty!" << endl;
+        cout << ERROR_MSG_EMPTY << endl;
         return;
     }
     cout << msg;
-    return;
 }
 void ClientHandler::handleAdd(int clientSocket)
 {
-    sendMsg(clientSocket, "add");
+    sendMsg(clientSocket, CMD_ADD.c_str());
     char message[4096] = "";
     recvMsg(clientSocket, message);
     // il server conferma la ricezione del comando
-    if (strcmp(message, "ricevuto_add") == 0)
+    if (strcmp(message, CMD_ADD_RCV.c_str()) == 0)
     {
         // crea la nota da inviare con titolo e body
         string note;
         string temp;
-        cout << "Create note: ";
-        cout << "Insert the title: ";
+        cout << NOTA_NEW_PROMPT;
+        cout << NOTA_TITLE_PROMPT;
         getline(cin, temp);
-        note += "title: " + temp + "\n";
-        cout << "Insert the text: ";
+        note += NOTA_TITLE + temp + "\n";
+        cout << NOTA_BODY_PROMPT;
         getline(cin, temp);
-        note += "body: " + temp + "\n";
+        note += NOTA_BODY + temp + "\n";
         //
         // invio la nota
         sendMsg(clientSocket, note.c_str());
         // ricevo la conferma della nota
         recvMsg(clientSocket, message);
-        if (strcmp(message, "ricevuto_nota") != 0)
+        if (strcmp(message, CMD_NOTA_RCV.c_str()) != 0)
         {
-            cout << "ERROR IN NOTA\n";
+            cout << INVALID_NOTA << endl;
             return;
         }
-        else if (strcmp(message, "ricevuto_nota") == 0)
+        else if (strcmp(message, CMD_NOTA_RCV.c_str()) == 0)
         {
-            cout << "NOTA SALVATA CON SUCCESSO\n";
-            sendMsg(clientSocket, "fine");
+            cout << CMD_NOTA_SAVED << endl;
+            sendMsg(clientSocket, END.c_str());
             return;
         }
     }
     else // se il comando non è stato accettato dal server
-        cout << "ERROR IN COMMAND\n";
+        cout << ERROR << endl;
 }
 
 int main()
