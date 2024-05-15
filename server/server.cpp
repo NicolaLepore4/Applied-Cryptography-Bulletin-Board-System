@@ -13,7 +13,7 @@
 #include <arpa/inet.h>
 
 #include "./crypto/key_exchange.cpp"
-#include "../common/protocol.cpp"
+#include "../common/protocol.h"
 using namespace std;
 
 const static string filenameMSG = "database/BBS.txt";

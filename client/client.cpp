@@ -20,7 +20,7 @@
 
 #include "../server/Message.cpp"
 #include "../server/crypto/key_exchange.cpp"
-#include "../common/protocol.cpp"
+#include "../common/protocol.h"
 
 using namespace std;
 
