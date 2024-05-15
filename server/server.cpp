@@ -1,5 +1,4 @@
 #include "BBS.cpp"
-#include "Client.cpp"
 #include <iostream>
 #include <string>
 #include <sstream>

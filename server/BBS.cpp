@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include "Message.cpp"
+#include "Client.cpp"
 #include <unordered_map>
 #include <set>
 using namespace std;
@@ -81,6 +81,7 @@ BBS::BBS(string filenameMSG, unsigned char *key, unsigned char *iv)
     for (auto &v : dati)
     {
         Message m = Message::deserialize(v, key, iv);
+        cout << m << endl;
         messages.insert({m.getIdentifier(), m});
     }
 

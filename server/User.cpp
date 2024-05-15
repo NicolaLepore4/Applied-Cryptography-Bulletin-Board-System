@@ -1,7 +1,5 @@
 #include <iostream>
 #include <string>
-#include "crypto/hashing.cpp"
-
 using namespace std;
 
 class User
