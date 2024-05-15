@@ -108,6 +108,7 @@ public:
 
             auto dec_msg = decryptString(msg, reinterpret_cast<const unsigned char *>(client_secret.c_str()), len);
             strcpy(msg, dec_msg.c_str());
+            cout << msg << endl;
         }
     }
 };

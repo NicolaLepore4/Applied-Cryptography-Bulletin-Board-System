@@ -1,3 +1,12 @@
+/**
+ * @file client.cpp
+ * @brief This file contains the implementation of the ClientHandler class, which handles the client-side operations for a bulletin board system.
+ *
+ * The ClientHandler class establishes a connection with the server, handles user registration, login, adding messages to the board, listing messages, getting a message, and logging out.
+ * It uses socket programming to communicate with the server and implements cryptographic functions for secure communication.
+ *
+ * The main function in this file creates an instance of the ClientHandler class and starts the client-side operations.
+ */
 #include <iostream>
 #include <vector>
 #include <string>
@@ -20,12 +29,22 @@ const string ip = "127.0.0.1";
 
 class ClientHandler
 {
+    /**
+     * @class ClientHandler
+     * @brief Handles the client-side functionality for the bulletin board system.
+     */
 private:
-    int clientSocket;
-    bool isLogged = false;
-    string username;
-    string public_key, private_key, server_secret = "";
+    int clientSocket;                                   /**< The client socket for communication with the server. */
+    bool isLogged = false;                              /**< Flag indicating if the client is logged in. */
+    string username;                                    /**< The username of the client. */
+    string public_key, private_key, server_secret = ""; /**< Cryptographic keys and server secret. */
 
+    /**
+     * @brief Sends a message to the server.
+     * @param clientSocket The client socket for communication.
+     * @param msg The message to be sent.
+     * @throws runtime_error if the message fails to send.
+     */
     void sendMsg(int clientSocket, const char *msg)
     {
         int size = 4096;
@@ -49,6 +68,12 @@ private:
             throw runtime_error(ERROR_MSG_SENT);
     }
 
+    /**
+     * @brief Receives a message from the server.
+     * @param clientSocket The client socket for communication.
+     * @param msg The buffer to store the received message.
+     * @param decrypt Flag indicating if the received message needs to be decrypted.
+     */
     void recvMsg(int clientSocket, char *msg, bool decrypt = true)
     {
         int size = 4096;
@@ -64,16 +89,72 @@ private:
     }
 
 public:
+    /**
+     * @brief Handles the registration process for a new user.
+     * @return true if the registration is successful, false otherwise.
+     */
     bool handleRegistration();
-    bool handleRegistrationChallenge(int);
+
+    /**
+     * @brief Handles the registration challenge for a new user.
+     * @param clientSocket The client socket for communication.
+     * @return true if the challenge is successful, false otherwise.
+     */
+    bool handleRegistrationChallenge(int clientSocket);
+
+    /**
+     * @brief Handles the login process for an existing user.
+     * @param clientSocket The client socket for communication.
+     * @return true if the login is successful, false otherwise.
+     */
     bool handleLogin(int clientSocket);
+
+    /**
+     * @brief Handles the addition of a new message to the bulletin board.
+     * @param clientSocket The client socket for communication.
+     */
     void handleAdd(int clientSocket);
+
+    /**
+     * @brief Handles the listing of all messages on the bulletin board.
+     * @param clientSocket The client socket for communication.
+     */
     void handleList(int clientSocket);
+
+    /**
+     * @brief Handles the retrieval of a specific message from the bulletin board.
+     * @param clientSocket The client socket for communication.
+     */
     void handleGet(int clientSocket);
+
+    /**
+     * @brief Handles the logout process for the client.
+     */
     void handleLogout();
+
+    /**
+     * @brief Handles the main functionality of the client.
+     */
     void handle();
+
+    /**
+     * @brief Handles the exit process for the client.
+     * @param clientSocket The client socket for communication.
+     * @return true if the exit is successful, false otherwise.
+     */
     bool handleExit(int clientSocket);
+
+    /**
+     * @brief Handles the quit process for the client.
+     * @param clientSocket The client socket for communication.
+     * @param isLogged Flag indicating if the client is logged in.
+     * @return true if the quit is successful, false otherwise.
+     */
     bool handleQuit(int clientSocket, bool isLogged);
+
+    /**
+     * @brief Default constructor for the ClientHandler class.
+     */
     ClientHandler();
 };
 
@@ -182,10 +263,10 @@ void ClientHandler::handle()
         // altrimenti può fare l'add, la list e la get
         string command = "";
         cout << printCommands(isLogged);
+        cout << PROMPT_COMMAND;
+        getline(cin, command);
         if (!isLogged)
         {
-            cout << PROMPT_COMMAND;
-            getline(cin, command);
             if (command == CMD_LOGIN)
             {
                 isLogged = handleLogin(clientSocket);
@@ -209,12 +290,10 @@ void ClientHandler::handle()
             else if (command == CMD_CLOSING)
                 isExited = handleExit(clientSocket);
             else
-                cout << INVALID_COMMAND << endl;
+               cout << INVALID_COMMAND << endl;
         }
         else
         {
-            cout << PROMPT_COMMAND;
-            getline(cin, command);
             if (command == CMD_ADD)
                 handleAdd(clientSocket);
             else if (command == CMD_LIST)
@@ -248,7 +327,7 @@ bool ClientHandler::handleRegistrationChallenge(int socket)
 
     string otp = "";
     cout << OTP_PROMPT_ENTER;
-    cin >> otp;
+    getline(cin, otp);;
 
     cout << OTP_PROMPT_BACK << endl;
     sendMsg(socket, otp.c_str());
@@ -370,7 +449,7 @@ void ClientHandler::handleLogout()
     // check if server response with a "ricevuto_logout" message otherwise return
     char message[4096] = "";
     recvMsg(clientSocket, (message));
-    if (strcmp(message, CMD_LOGOUT_RCV.c_str()) != 0)
+    if (strcmp(message, CMD_LOGOUT_OK.c_str()) != 0)
     {
         cout << CMD_LOGOUT_ERROR << endl;
         return;
@@ -476,7 +555,7 @@ void ClientHandler::handleAdd(int clientSocket)
         cout << NOTA_BODY_PROMPT;
         getline(cin, temp);
         note += NOTA_BODY + temp;
-        
+
         // invio la nota
         sendMsg(clientSocket, note.c_str());
         // ricevo la conferma della nota
