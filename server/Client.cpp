@@ -1,7 +1,8 @@
 #include <thread>
 #include <iostream>
 #include <string>
-#include "Message.cpp"
+#include "../common/Message.cpp"
+#include "./User.cpp"
 using namespace std;
 
 class Client

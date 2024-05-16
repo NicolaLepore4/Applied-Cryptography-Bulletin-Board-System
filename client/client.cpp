@@ -18,8 +18,8 @@
 #include <arpa/inet.h>
 #include <cstring>
 
-#include "../server/Message.cpp"
-#include "../server/crypto/key_exchange.cpp"
+#include "../common/Message.cpp"
+#include "../common/crypto/key_exchange.cpp"
 #include "../common/protocol.h"
 
 using namespace std;
@@ -46,73 +46,14 @@ private:
      * @param msg The message to be sent.
      * @throws runtime_error if the message fails to send.
      */
-    void sendMsg(int clientSocket, const char *msg)
-    {
-        int size = 4096;
-        if (server_secret == "")
-        {
-            int n = send(clientSocket, msg, size, 0);
-            if (n < 0)
-                throw runtime_error(ERROR_MSG_SENT);
-            return;
-        }
-        string masg_with_num = msg;
-        masg_with_num = masg_with_num + "$$$" + to_string(msg_num);
-        string masg_with_hash = masg_with_num + "@@@" + computeSHA3_512Hash(masg_with_num);
-        auto msg_encrypt = encryptString(masg_with_hash, reinterpret_cast<const unsigned char *>(server_secret.c_str()));
-
-        int msg_encrypt_first_len = msg_encrypt.second;
-        send(clientSocket, to_string(msg_encrypt_first_len).c_str(), size, 0);
-        char response[4096] = "";
-        recv(clientSocket, response, size, 0);
-
-        int n = send(clientSocket, msg_encrypt.first.c_str(), msg_encrypt.first.size(), 0);
-        msg_num++;
-        if (n < 0)
-            throw runtime_error(ERROR_MSG_SENT);
-    }
-
+    void sendMsg(int clientSocket, const char *msg);
     /**
      * @brief Receives a message from the server.
      * @param clientSocket The client socket for communication.
      * @param msg The buffer to store the received message.
      * @param decrypt Flag indicating if the received message needs to be decrypted.
      */
-    void recvMsg(int clientSocket, char *msg, bool decrypt = true)
-    {
-        int size = 4096;
-        recv(clientSocket, msg, size, 0);
-        if (decrypt)
-        {
-            size_t server_secret_len = atoi(msg);
-            send(clientSocket, "ricevuto", size, 0);
-            recv(clientSocket, msg, size, 0);
-            string msg_decrypt = decryptString(msg, reinterpret_cast<const unsigned char *>(server_secret.c_str()), server_secret_len);
-
-            string dec_msg_hash = msg_decrypt.substr(msg_decrypt.find("@@@") + 3);
-
-            int num_msg = stoi(msg_decrypt.substr(msg_decrypt.find("$$$") + 3, msg_decrypt.find("@@@"))); // Use std::string functions
-            if (msg_num != num_msg)
-            {
-                cout << "Wrong msg number from : " << clientSocket << endl;
-                handleExit(clientSocket);
-                exit(-1);
-            }
-            msg_decrypt = msg_decrypt.substr(0, msg_decrypt.find("@@@"));
-            if (dec_msg_hash != computeSHA3_512Hash(msg_decrypt))
-            {
-                cout << "Wrong hash in msg_num : " << msg_num << endl;
-                close(clientSocket);
-                exit(-1);
-            }
-            msg_decrypt = msg_decrypt.substr(0, msg_decrypt.find("$$$"));
-            //cout << "Received: " << msg_decrypt << endl;
-            strcpy(msg, msg_decrypt.c_str());
-            msg_num++;                                                        // Convert msg to std::string
-        }
-    }
-
-public:
+    void recvMsg(int clientSocket, char *msg, bool decrypt = true);
     /**
      * @brief Handles the registration process for a new user.
      * @return true if the registration is successful, false otherwise.
@@ -175,13 +116,72 @@ public:
      * @return true if the quit is successful, false otherwise.
      */
     bool handleQuit(int clientSocket, bool isLogged);
-
+public: 
     /**
      * @brief Default constructor for the ClientHandler class.
      */
     ClientHandler();
 };
 
+void ClientHandler::sendMsg(int clientSocket, const char *msg)
+    {
+        int size = 4096;
+        if (server_secret == "")
+        {
+            int n = send(clientSocket, msg, size, 0);
+            if (n < 0)
+                throw runtime_error(ERROR_MSG_SENT);
+            return;
+        }
+        string masg_with_num = msg;
+        masg_with_num = masg_with_num + "$$$" + to_string(msg_num);
+        string masg_with_hash = masg_with_num + "@@@" + computeSHA3_512Hash(masg_with_num);
+        auto msg_encrypt = encryptString(masg_with_hash, reinterpret_cast<const unsigned char *>(server_secret.c_str()));
+
+        int msg_encrypt_first_len = msg_encrypt.second;
+        send(clientSocket, to_string(msg_encrypt_first_len).c_str(), size, 0);
+        char response[4096] = "";
+        recv(clientSocket, response, size, 0);
+
+        int n = send(clientSocket, msg_encrypt.first.c_str(), msg_encrypt.first.size(), 0);
+        msg_num++;
+        if (n < 0)
+            throw runtime_error(ERROR_MSG_SENT);
+    }
+
+void ClientHandler::recvMsg(int clientSocket, char *msg, bool decrypt)
+    {
+        int size = 4096;
+        recv(clientSocket, msg, size, 0);
+        if (decrypt)
+        {
+            size_t server_secret_len = atoi(msg);
+            send(clientSocket, "ricevuto", size, 0);
+            recv(clientSocket, msg, size, 0);
+            string msg_decrypt = decryptString(msg, reinterpret_cast<const unsigned char *>(server_secret.c_str()), server_secret_len);
+
+            string dec_msg_hash = msg_decrypt.substr(msg_decrypt.find("@@@") + 3);
+
+            int num_msg = stoi(msg_decrypt.substr(msg_decrypt.find("$$$") + 3, msg_decrypt.find("@@@"))); // Use std::string functions
+            if (msg_num != num_msg)
+            {
+                cout << "Wrong msg number from : " << clientSocket << endl;
+                handleExit(clientSocket);
+                exit(-1);
+            }
+            msg_decrypt = msg_decrypt.substr(0, msg_decrypt.find("@@@"));
+            if (dec_msg_hash != computeSHA3_512Hash(msg_decrypt))
+            {
+                cout << "Wrong hash in msg_num : " << msg_num << endl;
+                close(clientSocket);
+                exit(-1);
+            }
+            msg_decrypt = msg_decrypt.substr(0, msg_decrypt.find("$$$"));
+            //cout << "Received: " << msg_decrypt << endl;
+            strcpy(msg, msg_decrypt.c_str());
+            msg_num++;                                                        // Convert msg to std::string
+        }
+    }
 ClientHandler::ClientHandler()
 {
     try

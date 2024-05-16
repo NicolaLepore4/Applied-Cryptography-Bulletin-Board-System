@@ -11,8 +11,9 @@
 #include <arpa/inet.h>
 
 #include "BBS.cpp"
-#include "./crypto/key_exchange.cpp"
+#include "../common/crypto/key_exchange.cpp"
 #include "../common/protocol.h"
+#include "./User.cpp"
 
 using namespace std;
 
@@ -33,15 +34,12 @@ private:
     int serverSocket;
     BBS board = BBS(filenameMSG, key, iv);
     unordered_map<int, int> clientMsgNumMap;
-
     list<Client> users = list<Client>();
     string public_key, private_key;
 
     bool findUserOnFile(const char *, const char *); // check if user exists in file and if password is correct
     pair<string, string> extractNoteDetails(const string &note);
     Message findMsgOnFile(char *);
-
-public:
     void handle(int);
     bool handleLogin(int, string);
     void handleLogout(Server, int, string);
@@ -52,6 +50,7 @@ public:
     void handleListMessages(int, int, int, string);
     bool checkUsernameOnFile(const char *);
 
+public:
     Server();
     void start();
 
@@ -71,9 +70,12 @@ public:
         {
             int msg_num = 0;
             auto it = clientMsgNumMap.find(clientSocket);
-            if (it != clientMsgNumMap.end()) {
+            if (it != clientMsgNumMap.end())
+            {
                 msg_num = it->second;
-            } else {
+            }
+            else
+            {
                 clientMsgNumMap[clientSocket] = 0;
                 msg_num = 0;
             }
@@ -131,13 +133,16 @@ public:
 
             int msg_num;
             auto it = clientMsgNumMap.find(clientSocket);
-            if (it != clientMsgNumMap.end()) {
+            if (it != clientMsgNumMap.end())
+            {
                 msg_num = it->second;
-            } else {
-                //clientMsgNumMap[clientSocket] = 0;
+            }
+            else
+            {
+                // clientMsgNumMap[clientSocket] = 0;
                 msg_num = 0;
-            }                                                   // Convert msg to std::string
-            int num_msg = stoi(dec_msg.substr(dec_msg.find("$$$")+3,dec_msg.find("@@@"))); // Use std::string functions
+            } // Convert msg to std::string
+            int num_msg = stoi(dec_msg.substr(dec_msg.find("$$$") + 3, dec_msg.find("@@@"))); // Use std::string functions
             if (msg_num != num_msg)
             {
                 cout << "Wrong msg number from : " << clientSocket << endl;
@@ -200,7 +205,7 @@ void Server::handle(int clientSocket)
             throw runtime_error("Error generating shared secret");
         string msg_c = "Connection established 234567890";
 
-        //auto enc_msg = encryptString(msg_c, reinterpret_cast<const unsigned char *>(client_secret.c_str()));
+        // auto enc_msg = encryptString(msg_c, reinterpret_cast<const unsigned char *>(client_secret.c_str()));
         sendMsg(clientSocket, msg_c.c_str(), client_secret);
 
         char response[4096] = "";
@@ -548,7 +553,7 @@ bool Server::handleRegistration(int clientSocket, string client_secret)
     User u = User(username, password, email);
     if (checkUsernameOnFile(username.c_str()))
     {
-        sendMsg(clientSocket,USERNAME_TAKEN.c_str(), client_secret);
+        sendMsg(clientSocket, USERNAME_TAKEN.c_str(), client_secret);
         return false;
     }
     ofstream file = ofstream(filenameUSR, ios::app);

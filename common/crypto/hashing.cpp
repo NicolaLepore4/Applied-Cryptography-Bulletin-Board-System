@@ -1,3 +1,6 @@
+#ifndef HASHING_CPP
+#define HASHING_CPP
+
 #include <iostream>
 #include <string>
 #include <openssl/evp.h> //for all other OpenSSL function calls
@@ -81,3 +84,5 @@ string computeSHA3_512Hash(const string &input, const int &salt)
   string data = input + to_string(salt);
   return computeSHA3_512Hash(data);
 }
+
+#endif

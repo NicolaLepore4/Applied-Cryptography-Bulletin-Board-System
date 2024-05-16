@@ -2,7 +2,6 @@
 #include <string>
 #include "crypto/aes.cpp"
 #include "crypto/hashing.cpp"
-#include "User.cpp"
 using namespace std;
 
 const string delimiter = "/,";

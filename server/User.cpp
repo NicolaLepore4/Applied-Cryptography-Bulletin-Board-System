@@ -1,5 +1,8 @@
+#ifndef USER_CPP
+#define USER_CPP
 #include <iostream>
 #include <string>
+#include "../common/crypto/hashing.cpp"
 using namespace std;
 
 class User
@@ -80,3 +83,5 @@ string User::serialize()
 {
     return username + " " + password + " " + mail + " " + salt;
 }
+
+#endif
