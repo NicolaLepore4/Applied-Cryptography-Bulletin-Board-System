@@ -121,8 +121,7 @@ public:
         string author = data2.substr(0, data2.find(delimiter));
         data2 = data2.substr(data2.find(delimiter) + delimiter.size());
         string body = data2;
-        Message m = Message(identifier, title, author, body);
-        return m;
+        return Message(identifier, title, author, body);
     }
 
 

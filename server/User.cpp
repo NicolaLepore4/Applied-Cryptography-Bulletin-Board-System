@@ -11,8 +11,6 @@ private:
     string salt,username, mail, password;
 
 public:
-    string serialize();
-
     friend ostream &operator<<(ostream &os, const User &u)
     {
         os << u.username << " " << u.password << " " << u.mail << " " << u.salt;
