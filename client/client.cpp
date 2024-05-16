@@ -38,6 +38,7 @@ private:
     bool isLogged = false;                              /**< Flag indicating if the client is logged in. */
     string username;                                    /**< The username of the client. */
     string public_key, private_key, server_secret = ""; /**< Cryptographic keys and server secret. */
+    int msg_num = 0;                                    /**< The message ID for the client. */
 
     /**
      * @brief Sends a message to the server.
@@ -55,7 +56,10 @@ private:
                 throw runtime_error(ERROR_MSG_SENT);
             return;
         }
-        auto msg_encrypt = encryptString(msg, reinterpret_cast<const unsigned char *>(server_secret.c_str()));
+        string masg_with_num = msg;
+        masg_with_num = masg_with_num + "$$$" + to_string(msg_num);
+        string masg_with_hash = masg_with_num + "@@@" + computeSHA3_512Hash(masg_with_num);
+        auto msg_encrypt = encryptString(masg_with_hash, reinterpret_cast<const unsigned char *>(server_secret.c_str()));
 
         int msg_encrypt_first_len = msg_encrypt.second;
         send(clientSocket, to_string(msg_encrypt_first_len).c_str(), size, 0);
@@ -63,7 +67,7 @@ private:
         recv(clientSocket, response, size, 0);
 
         int n = send(clientSocket, msg_encrypt.first.c_str(), msg_encrypt.first.size(), 0);
-
+        msg_num++;
         if (n < 0)
             throw runtime_error(ERROR_MSG_SENT);
     }
@@ -84,7 +88,27 @@ private:
             send(clientSocket, "ricevuto", size, 0);
             recv(clientSocket, msg, size, 0);
             string msg_decrypt = decryptString(msg, reinterpret_cast<const unsigned char *>(server_secret.c_str()), server_secret_len);
+
+            string dec_msg_hash = msg_decrypt.substr(msg_decrypt.find("@@@") + 3);
+
+            int num_msg = stoi(msg_decrypt.substr(msg_decrypt.find("$$$") + 3, msg_decrypt.find("@@@"))); // Use std::string functions
+            if (msg_num != num_msg)
+            {
+                cout << "Wrong msg number from : " << clientSocket << endl;
+                handleExit(clientSocket);
+                exit(-1);
+            }
+            msg_decrypt = msg_decrypt.substr(0, msg_decrypt.find("@@@"));
+            if (dec_msg_hash != computeSHA3_512Hash(msg_decrypt))
+            {
+                cout << "Wrong hash in msg_num : " << msg_num << endl;
+                close(clientSocket);
+                exit(-1);
+            }
+            msg_decrypt = msg_decrypt.substr(0, msg_decrypt.find("$$$"));
+            //cout << "Received: " << msg_decrypt << endl;
             strcpy(msg, msg_decrypt.c_str());
+            msg_num++;                                                        // Convert msg to std::string
         }
     }
 
@@ -199,16 +223,16 @@ ClientHandler::ClientHandler()
         char challenge_len[4096] = "";
         recvMsg(serverSocket, challenge_len);
 
-        string challenge_decrypt = decryptString(challenge, reinterpret_cast<const unsigned char *>(server_secret.c_str()), atoi(challenge_len));
+        //string challenge_decrypt = decryptString(challenge, reinterpret_cast<const unsigned char *>(server_secret.c_str()), atoi(challenge_len));
 
         // send the challenge to the server
 
-        auto challenge_encrypt = encryptString(challenge_decrypt + " client!1234567", reinterpret_cast<const unsigned char *>(server_secret.c_str()));
-
-        sendMsg(serverSocket, to_string(challenge_encrypt.second).c_str());
+       // auto challenge_encrypt = encryptString(challenge_decrypt + " client!1234567", reinterpret_cast<const unsigned char *>(server_secret.c_str()));
+        string challenge_encrypt = challenge + string(" client!1234567");
+        sendMsg(serverSocket, to_string(challenge_encrypt.size()).c_str());
         char response[4096] = "";
         recvMsg(serverSocket, response);
-        sendMsg(serverSocket, (challenge_encrypt.first).c_str());
+        sendMsg(serverSocket, (challenge_encrypt).c_str());
 
         cerr << SERVER_CONNECTED << endl;
         clientSocket = serverSocket;
@@ -290,7 +314,7 @@ void ClientHandler::handle()
             else if (command == CMD_CLOSING)
                 isExited = handleExit(clientSocket);
             else
-               cout << INVALID_COMMAND << endl;
+                cout << INVALID_COMMAND << endl;
         }
         else
         {
@@ -327,7 +351,8 @@ bool ClientHandler::handleRegistrationChallenge(int socket)
 
     string otp = "";
     cout << OTP_PROMPT_ENTER;
-    getline(cin, otp);;
+    getline(cin, otp);
+    ;
 
     cout << OTP_PROMPT_BACK << endl;
     sendMsg(socket, otp.c_str());
@@ -495,6 +520,7 @@ bool ClientHandler::handleLogin(int clientSocket)
     if (strcmp(response, CMD_PASSWORD_RCV.c_str()) != 0)
         return false;
 
+    sendMsg(clientSocket, OK.c_str());
     recvMsg(clientSocket, response);
     return strcmp(response, CMD_LOGIN_OK.c_str()) == 0;
 }

@@ -1,4 +1,3 @@
-#include "BBS.cpp"
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -11,8 +10,10 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
+#include "BBS.cpp"
 #include "./crypto/key_exchange.cpp"
 #include "../common/protocol.h"
+
 using namespace std;
 
 const static string filenameMSG = "database/BBS.txt";
@@ -31,6 +32,8 @@ private:
     const string ip = "127.0.0.1";
     int serverSocket;
     BBS board = BBS(filenameMSG, key, iv);
+    unordered_map<int, int> clientMsgNumMap;
+
     list<Client> users = list<Client>();
     string public_key, private_key;
 
@@ -66,7 +69,23 @@ public:
         }
         else
         {
-            auto enc_msg = encryptString(msg, reinterpret_cast<const unsigned char *>(client_secret.c_str()));
+            int msg_num = 0;
+            auto it = clientMsgNumMap.find(clientSocket);
+            if (it != clientMsgNumMap.end()) {
+                msg_num = it->second;
+            } else {
+                clientMsgNumMap[clientSocket] = 0;
+                msg_num = 0;
+            }
+            if (msg_num == -1)
+            {
+                close(clientSocket);
+                throw runtime_error(ERROR_MSG_SENT);
+            }
+            string masg_with_num = msg;
+            masg_with_num = masg_with_num + "$$$" + to_string(msg_num);
+            string masg_with_hash = masg_with_num + "@@@" + computeSHA3_512Hash(masg_with_num);
+            auto enc_msg = encryptString(masg_with_hash, reinterpret_cast<const unsigned char *>(client_secret.c_str()));
             // auto enc_msg = encryptString(msg, reinterpret_cast<const unsigned char*>("UnaChiaveSegretaMoltoLunga12345"));
             auto size = 4096;
             send(clientSocket, (to_string(enc_msg.second)).c_str(), size, 0);
@@ -79,6 +98,7 @@ public:
                 close(clientSocket);
                 throw runtime_error(ERROR_MSG_SENT);
             }
+            it->second++;
         }
     }
 
@@ -106,7 +126,32 @@ public:
             recv(clientSocket, msg, size, 0);
 
             auto dec_msg = decryptString(msg, reinterpret_cast<const unsigned char *>(client_secret.c_str()), len);
+
+            string dec_msg_hash = dec_msg.substr(dec_msg.find("@@@") + 3);
+
+            int msg_num;
+            auto it = clientMsgNumMap.find(clientSocket);
+            if (it != clientMsgNumMap.end()) {
+                msg_num = it->second;
+            } else {
+                //clientMsgNumMap[clientSocket] = 0;
+                msg_num = 0;
+            }                                                   // Convert msg to std::string
+            int num_msg = stoi(dec_msg.substr(dec_msg.find("$$$")+3,dec_msg.find("@@@"))); // Use std::string functions
+            if (msg_num != num_msg)
+            {
+                cout << "Wrong msg number from : " << clientSocket << endl;
+                close(clientSocket);
+            }
+            dec_msg = dec_msg.substr(0, dec_msg.find("@@@"));
+            if (dec_msg_hash != computeSHA3_512Hash(dec_msg))
+            {
+                cout << "Wrong hash from : " << clientSocket << endl;
+                close(clientSocket);
+            }
+            dec_msg = dec_msg.substr(0, dec_msg.find("$$$"));
             strcpy(msg, dec_msg.c_str());
+            it->second++;
             cout << msg << endl;
         }
     }
@@ -140,6 +185,7 @@ Server::Server()
 
 void Server::handle(int clientSocket)
 {
+    clientMsgNumMap[clientSocket] = 0;
     try
     {
         if (!generateKeyPair(public_key, private_key))
@@ -154,12 +200,12 @@ void Server::handle(int clientSocket)
             throw runtime_error("Error generating shared secret");
         string msg_c = "Connection established 234567890";
 
-        auto enc_msg = encryptString(msg_c, reinterpret_cast<const unsigned char *>(client_secret.c_str()));
-        sendMsg(clientSocket, (enc_msg.first).c_str(), client_secret);
+        //auto enc_msg = encryptString(msg_c, reinterpret_cast<const unsigned char *>(client_secret.c_str()));
+        sendMsg(clientSocket, msg_c.c_str(), client_secret);
 
         char response[4096] = "";
         recvMsg(clientSocket, response, client_secret);
-        sendMsg(clientSocket, (to_string(enc_msg.second)).c_str(), client_secret);
+        sendMsg(clientSocket, (to_string(msg_c.size())).c_str(), client_secret);
 
         char challenge[4096] = "";
         char challenge_len[4096] = "";
@@ -239,6 +285,10 @@ bool Server::handleLogin(int clientSocket, string client_secret)
     sendMsg(clientSocket, CMD_PASSWORD_RCV.c_str(), client_secret);
 
     bool authenticated = findUserOnFile(username, password);
+    char msg[4096] = "";
+    recvMsg(clientSocket, msg, client_secret);
+    if (strcmp(msg, OK.c_str()) != 0)
+        throw runtime_error(ERROR_MSG_RCV);
     if (authenticated)
     {
         sendMsg(clientSocket, CMD_LOGIN_OK.c_str(), client_secret);
