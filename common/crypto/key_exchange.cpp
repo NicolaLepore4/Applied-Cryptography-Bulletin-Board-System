@@ -12,11 +12,11 @@ using namespace std;
 
 void handle_errors()
 {
-    cout<<"Error in key exchange file"<<endl;
+    cout << "Error in key exchange file" << endl;
     ERR_print_errors_fp(stderr);
     abort();
 }
-    
+
 bool generateKeyPair(string &publicKey, string &privateKey)
 {
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_X25519, nullptr); // key algorithm context
@@ -67,42 +67,48 @@ bool saveToFile(const string &filename, const string &data, bool isPEMFormat)
     return true;
 }
 
+bool loadFromFile(string &data, string &filename, bool isPEMFormat)
+{
+    // load pem using openssl functions
+    ifstream file(filename, ios::binary);
+    if (file.is_open())
+    {
+        string line;
+        while (getline(file, line))
+        {
+            cout << "line: " << line << "\n";
+            data += line + "\n";
+        }
+        file.close();
+        return true;
+    }
+    else
+    {
+        cout << "Error opening file\n";
+        cout << "File: " << endl;
+        return false;
+    }
+}
+
+bool loadFromFile(string &publicKey)
+{
+    string pKey_filename = "../common/public_key.pem";
+    return loadFromFile(publicKey, pKey_filename, true);
+}
+
+bool loadFromFile(string &publicKey, string &privateKey)
+{
+    string prKey_filename = "private_key.pem";
+
+    auto pubKeyStatus = loadFromFile(publicKey);
+    auto privKeyStatus = loadFromFile(privateKey, prKey_filename, true);
+    return pubKeyStatus && privKeyStatus;
+}
+
 static const string base64_chars =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "abcdefghijklmnopqrstuvwxyz"
     "0123456789+/";
-
-string Base64Encode(const unsigned char *secretData, size_t length)
-{
-    string encoded_data;
-
-    encoded_data.reserve(((length + 2) / 3) * 4);
-    // cout << length << endl;
-
-    // Iterate over each group of 3 bytes
-    for (size_t i = 0; i < length; i += 3)
-    {
-        unsigned char byte1 = secretData[i];
-        unsigned char byte2 = (i + 1 < length) ? secretData[i + 1] : 0;
-        unsigned char byte3 = (i + 2 < length) ? secretData[i + 2] : 0;
-
-        // Encode the 3 bytes into 4 base64 characters
-        unsigned char b64char1 = byte1 >> 2;
-        unsigned char b64char2 = ((byte1 & 0x03) << 4) | (byte2 >> 4);
-        unsigned char b64char3 = ((byte2 & 0x0F) << 2) | (byte3 >> 6);
-        unsigned char b64char4 = byte3 & 0x3F;
-
-        encoded_data += base64_chars[b64char1];
-        encoded_data += base64_chars[b64char2];
-        encoded_data += (i + 1 < length) ? base64_chars[b64char3] : '=';
-        encoded_data += (i + 2 < length) ? base64_chars[b64char4] : '=';
-
-        // pushback function
-    }
-
-    return encoded_data;
-}
-
 unsigned char *Base64Decode(const string &encoded_data, int length)
 {
     unsigned char *decoded_data = new unsigned char[length];
@@ -134,6 +140,37 @@ unsigned char *Base64Decode(const string &encoded_data, int length)
     }
 
     return decoded_data;
+}
+
+string Base64Encode(const unsigned char *secretData, size_t length)
+{
+    string encoded_data;
+
+    encoded_data.reserve(((length + 2) / 3) * 4);
+    // cout << length << endl;
+
+    // Iterate over each group of 3 bytes
+    for (size_t i = 0; i < length; i += 3)
+    {
+        unsigned char byte1 = secretData[i];
+        unsigned char byte2 = (i + 1 < length) ? secretData[i + 1] : 0;
+        unsigned char byte3 = (i + 2 < length) ? secretData[i + 2] : 0;
+
+        // Encode the 3 bytes into 4 base64 characters
+        unsigned char b64char1 = byte1 >> 2;
+        unsigned char b64char2 = ((byte1 & 0x03) << 4) | (byte2 >> 4);
+        unsigned char b64char3 = ((byte2 & 0x0F) << 2) | (byte3 >> 6);
+        unsigned char b64char4 = byte3 & 0x3F;
+
+        encoded_data += base64_chars[b64char1];
+        encoded_data += base64_chars[b64char2];
+        encoded_data += (i + 1 < length) ? base64_chars[b64char3] : '=';
+        encoded_data += (i + 2 < length) ? base64_chars[b64char4] : '=';
+
+        // pushback function
+    }
+
+    return encoded_data;
 }
 
 string generateSharedSecret(const string &publicKey, const string &privateKey)
@@ -224,7 +261,6 @@ pair<string, int> encryptString(const string &plainText, const unsigned char *ae
 
     return make_pair(encryptedText, finalLength);
 }
-
 
 string decryptString(const string &encryptedtxt, const unsigned char *aes_key, int length)
 {
