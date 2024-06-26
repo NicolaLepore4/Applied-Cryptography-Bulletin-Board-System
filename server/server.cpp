@@ -193,8 +193,9 @@ void Server::handle(int clientSocket)
     clientMsgNumMap[clientSocket] = 0;
     try
     {
-        if (!generateKeyPair(public_key, private_key))
-            throw runtime_error(ERROR_KEYPAIR);
+        public_key = private_key = "";
+        if(!loadFromFile(public_key, private_key))
+            throw runtime_error("Error loading keys");
 
         sendMsg(clientSocket, public_key.c_str(), "");
         char recv_pub_key_client[4096] = "";
