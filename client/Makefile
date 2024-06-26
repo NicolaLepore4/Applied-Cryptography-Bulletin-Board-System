@@ -1,7 +1,7 @@
 CXXFLAGS = -std=c++17 -lcrypto
 # -Wall -Wextra -Werror -Wno-sign-compare -Wno-unused-parameter -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function -Wno-unused-but-set-variable -Wno-unused-local-typedefs -Wno-unused-value -Wno-unused-local-typedefs
 
-CLIENT = client.cpp
+CLIENT = clientHandler.cpp
 CLIENT_EXE = client.out
 
 client: $(CLIENT)

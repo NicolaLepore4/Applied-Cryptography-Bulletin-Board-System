@@ -68,6 +68,7 @@ const string CMD_GET_RCV = "ricevuto_get";
 const string CMD_ADD_RCV = "ricevuto_add";
 const string CMD_NOTA_RCV = "ricevuto_nota";
 const string CMD_NOTA_SAVED = "Nota saved";
+const string CMD_GETLOCAL = "get_local";
 
 const string CMD_GET_SEARCH_PROMPT = "Insert the identifier of the message to search: ";
 

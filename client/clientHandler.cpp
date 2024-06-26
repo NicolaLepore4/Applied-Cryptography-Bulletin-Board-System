@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <cstring>
+#include <algorithm>
 
 #include "../common/Message.cpp"
 #include "../common/crypto/key_exchange.cpp"
@@ -86,6 +87,9 @@ private:
      */
     void handleList(int clientSocket);
 
+    void getLocal();
+    void saveMessage(Message &msg);
+
     /**
      * @brief Handles the retrieval of a specific message from the bulletin board.
      * @param clientSocket The client socket for communication.
@@ -116,7 +120,8 @@ private:
      * @return true if the quit is successful, false otherwise.
      */
     bool handleQuit(int clientSocket, bool isLogged);
-public: 
+
+public:
     /**
      * @brief Default constructor for the ClientHandler class.
      */
@@ -124,64 +129,64 @@ public:
 };
 
 void ClientHandler::sendMsg(int clientSocket, const char *msg)
+{
+    int size = 4096;
+    if (server_secret == "")
     {
-        int size = 4096;
-        if (server_secret == "")
-        {
-            int n = send(clientSocket, msg, size, 0);
-            if (n < 0)
-                throw runtime_error(ERROR_MSG_SENT);
-            return;
-        }
-        string masg_with_num = msg;
-        masg_with_num = masg_with_num + "$$$" + to_string(msg_num);
-        string masg_with_hash = masg_with_num + "@@@" + computeSHA3_512Hash(masg_with_num);
-        auto msg_encrypt = encryptString(masg_with_hash, reinterpret_cast<const unsigned char *>(server_secret.c_str()));
-
-        int msg_encrypt_first_len = msg_encrypt.second;
-        send(clientSocket, to_string(msg_encrypt_first_len).c_str(), size, 0);
-        char response[4096] = "";
-        recv(clientSocket, response, size, 0);
-
-        int n = send(clientSocket, msg_encrypt.first.c_str(), msg_encrypt.first.size(), 0);
-        msg_num++;
+        int n = send(clientSocket, msg, size, 0);
         if (n < 0)
             throw runtime_error(ERROR_MSG_SENT);
+        return;
     }
+    string masg_with_num = msg;
+    masg_with_num = masg_with_num + "$$$" + to_string(msg_num);
+    string masg_with_hash = masg_with_num + "@@@" + computeSHA3_512Hash(masg_with_num);
+    auto msg_encrypt = encryptString(masg_with_hash, reinterpret_cast<const unsigned char *>(server_secret.c_str()));
+
+    int msg_encrypt_first_len = msg_encrypt.second;
+    send(clientSocket, to_string(msg_encrypt_first_len).c_str(), size, 0);
+    char response[4096] = "";
+    recv(clientSocket, response, size, 0);
+
+    int n = send(clientSocket, msg_encrypt.first.c_str(), msg_encrypt.first.size(), 0);
+    msg_num++;
+    if (n < 0)
+        throw runtime_error(ERROR_MSG_SENT);
+}
 
 void ClientHandler::recvMsg(int clientSocket, char *msg, bool decrypt)
+{
+    int size = 4096;
+    recv(clientSocket, msg, size, 0);
+    if (decrypt)
     {
-        int size = 4096;
+        size_t server_secret_len = atoi(msg);
+        send(clientSocket, "ricevuto", size, 0);
         recv(clientSocket, msg, size, 0);
-        if (decrypt)
+        string msg_decrypt = decryptString(msg, reinterpret_cast<const unsigned char *>(server_secret.c_str()), server_secret_len);
+
+        string dec_msg_hash = msg_decrypt.substr(msg_decrypt.find("@@@") + 3);
+
+        int num_msg = stoi(msg_decrypt.substr(msg_decrypt.find("$$$") + 3, msg_decrypt.find("@@@"))); // Use std::string functions
+        if (msg_num != num_msg)
         {
-            size_t server_secret_len = atoi(msg);
-            send(clientSocket, "ricevuto", size, 0);
-            recv(clientSocket, msg, size, 0);
-            string msg_decrypt = decryptString(msg, reinterpret_cast<const unsigned char *>(server_secret.c_str()), server_secret_len);
-
-            string dec_msg_hash = msg_decrypt.substr(msg_decrypt.find("@@@") + 3);
-
-            int num_msg = stoi(msg_decrypt.substr(msg_decrypt.find("$$$") + 3, msg_decrypt.find("@@@"))); // Use std::string functions
-            if (msg_num != num_msg)
-            {
-                cout << "Wrong msg number from : " << clientSocket << endl;
-                handleExit(clientSocket);
-                exit(-1);
-            }
-            msg_decrypt = msg_decrypt.substr(0, msg_decrypt.find("@@@"));
-            if (dec_msg_hash != computeSHA3_512Hash(msg_decrypt))
-            {
-                cout << "Wrong hash in msg_num : " << msg_num << endl;
-                close(clientSocket);
-                exit(-1);
-            }
-            msg_decrypt = msg_decrypt.substr(0, msg_decrypt.find("$$$"));
-            //cout << "Received: " << msg_decrypt << endl;
-            strcpy(msg, msg_decrypt.c_str());
-            msg_num++;                                                        // Convert msg to std::string
+            cout << "Wrong msg number from : " << clientSocket << endl;
+            handleExit(clientSocket);
+            exit(-1);
         }
+        msg_decrypt = msg_decrypt.substr(0, msg_decrypt.find("@@@"));
+        if (dec_msg_hash != computeSHA3_512Hash(msg_decrypt))
+        {
+            cout << "Wrong hash in msg_num : " << msg_num << endl;
+            close(clientSocket);
+            exit(-1);
+        }
+        msg_decrypt = msg_decrypt.substr(0, msg_decrypt.find("$$$"));
+        // cout << "Received: " << msg_decrypt << endl;
+        strcpy(msg, msg_decrypt.c_str());
+        msg_num++; // Convert msg to std::string
     }
+}
 ClientHandler::ClientHandler()
 {
     try
@@ -209,6 +214,11 @@ ClientHandler::ClientHandler()
         char server_public_key[4096] = "";
         recvMsg(serverSocket, server_public_key, false);
 
+        string server_pubKey_check = "";
+        loadFromFile(server_pubKey_check);
+        if (!strcmp(server_public_key, server_pubKey_check.c_str()) == 0)
+            throw runtime_error(ERROR_MSG_RCV);
+
         // send the public key to the server
         sendMsg(serverSocket, public_key.c_str());
 
@@ -223,11 +233,11 @@ ClientHandler::ClientHandler()
         char challenge_len[4096] = "";
         recvMsg(serverSocket, challenge_len);
 
-        //string challenge_decrypt = decryptString(challenge, reinterpret_cast<const unsigned char *>(server_secret.c_str()), atoi(challenge_len));
+        // string challenge_decrypt = decryptString(challenge, reinterpret_cast<const unsigned char *>(server_secret.c_str()), atoi(challenge_len));
 
         // send the challenge to the server
 
-       // auto challenge_encrypt = encryptString(challenge_decrypt + " client!1234567", reinterpret_cast<const unsigned char *>(server_secret.c_str()));
+        // auto challenge_encrypt = encryptString(challenge_decrypt + " client!1234567", reinterpret_cast<const unsigned char *>(server_secret.c_str()));
         string challenge_encrypt = challenge + string(" client!1234567");
         sendMsg(serverSocket, to_string(challenge_encrypt.size()).c_str());
         char response[4096] = "";
@@ -307,6 +317,8 @@ void ClientHandler::handle()
                 else
                     cout << REGISTRATION_FAIL << endl;
             }
+            else if (command == CMD_GETLOCAL)
+                getLocal();
             else if (command == CMD_ADD || command == CMD_LIST || command == CMD_GET || command == CMD_LOGOUT)
                 cout << LOGIN_REQUIRED << endl;
             else if (command == CMD_EXIT || command == CMD_QUIT)
@@ -324,6 +336,8 @@ void ClientHandler::handle()
                 handleList(clientSocket);
             else if (command == CMD_GET)
                 handleGet(clientSocket);
+            else if (command == CMD_GETLOCAL)
+                getLocal();
             else if (command == CMD_LOGOUT)
                 handleLogout();
             else if (command == CMD_LOGIN || command == CMD_REGISTRATION)
@@ -525,6 +539,124 @@ bool ClientHandler::handleLogin(int clientSocket)
     return strcmp(response, CMD_LOGIN_OK.c_str()) == 0;
 }
 
+void ClientHandler::getLocal()
+{
+    // prendi in input il nome del file
+    string filename;
+    cout << "Enter the name of the file: ";
+    getline(cin, filename);
+    // dal nome del file prendi il valore numerico tra & e .txt
+    if (filename.find("&") == string::npos || filename.find(".txt") == string::npos)
+    {
+        cout << "Invalid file name" << endl;
+        return;
+    }
+    int len = stoi(filename.substr(filename.find("&") + 1, filename.find(".txt")));
+    // prendi in input la password
+    string password;
+    cout << "Enter the password: ";
+    getline(cin, password);
+    // unsigned char *key = (unsigned char *)computeSHA3_512Hash(password).substr(0, 31).c_str();
+    // password = "";
+    // prendi dal file il primo rigo e mettilo come lunghezza
+    auto str_key = computeSHA3_512Hash(password).substr(0, 32);
+    unsigned char key[32];
+    memcpy(key, str_key.c_str(), 32);
+    // unsigned char *key = (unsigned char *)("UnaChiaveSegretaMoltoLunga12345");
+    unsigned char iv[32] = "";
+    unsigned char cipher_file[4096];
+
+    ifstream rfile(filename);
+    if (!rfile.is_open() && ".txt" != filename.substr(filename.find_last_of(".")))
+    {
+        cout << "Error opening file" << endl;
+        return;
+    }
+    rfile.read(reinterpret_cast<char *>(cipher_file), len);
+    rfile.close();
+
+    unsigned char plaintext[len];
+    int dec_size = decrypt(cipher_file, len, key, plaintext, iv);
+    vector<unsigned char> data_dec(plaintext, plaintext + dec_size);
+    string data2;
+    data2 = string(data_dec.begin(), data_dec.end());
+    int identifier = stoi(data2.substr(0, data2.find(delimiter)));
+    data2 = data2.substr(data2.find(delimiter) + delimiter.size());
+    string title = data2.substr(0, data2.find(delimiter));
+    data2 = data2.substr(data2.find(delimiter) + delimiter.size());
+    string author = data2.substr(0, data2.find(delimiter));
+    data2 = data2.substr(data2.find(delimiter) + delimiter.size());
+    string body = data2;
+    Message msg = Message(identifier, title, author, body);
+    cout << msg << endl;
+}
+
+void ClientHandler::saveMessage(Message &msg)
+{
+    // save the message to a file and encrypt with aes nella cartella client
+    // prendi la password in input
+    string password;
+    bool validPassword = false;
+    while (!validPassword)
+    {
+        cout << "Enter the password to encrypt the message lenght at least 10 characters, with at least one uppercase letter and one number: ";
+        getline(cin, password);
+        // Check password length
+        if (password.length() < 10)
+        {
+            cout << "Password must be at least 10 characters long." << endl;
+            continue;
+        }
+        // Check for uppercase letter
+        bool hasUppercase = false;
+        for (char c : password)
+        {
+            if (isupper(c))
+            {
+                hasUppercase = true;
+                break;
+            }
+        }
+        if (!hasUppercase)
+        {
+            cout << "Password must contain at least one uppercase letter." << endl;
+            continue;
+        } // Check for numbers
+        bool hasNumber = false;
+        for (char c : password)
+        {
+            if (isdigit(c))
+            {
+                hasNumber = true;
+                break;
+            }
+        }
+        if (!hasNumber)
+        {
+            cout << "Password must contain at least one number." << endl;
+            continue;
+        }
+        validPassword = true;
+    } // fai lo sha della password e prendi i primi 31 caratteri e converti la key in unsigned char*
+
+    auto str_key = computeSHA3_512Hash(password).substr(0, 32);
+    unsigned char key[32];
+    memcpy(key, str_key.c_str(), 32);
+
+    // elimina password
+    password = "";
+    unsigned char cipher[4096];
+    unsigned char iv[32] = "";
+    int cipher_len = encrypt(msg.serialize(), msg.serialize().length(), key, cipher, iv);
+    string filename = "msg_" + msg.getTitle() + "&" + to_string(cipher_len) + ".txt";
+    replace(filename.begin(), filename.end(), ' ', '_');
+    ofstream file(filename);
+    file.flush();
+    // scrivi il cipher nel file in hex
+    file.write(reinterpret_cast<char *>(cipher), cipher_len);
+    file.close();
+}
+
 void ClientHandler::handleGet(int clientSocket)
 {
     // send get to server due to perform the get operation
@@ -556,6 +688,7 @@ void ClientHandler::handleGet(int clientSocket)
     // return the message from the server
     recvMsg(clientSocket, message);
     Message msg = Message(message);
+    saveMessage(msg);
     sendMsg(clientSocket, END.c_str());
     if (msg.getTitle() == "" && msg.getBody() == "")
 
