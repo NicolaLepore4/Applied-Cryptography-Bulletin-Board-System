@@ -283,6 +283,7 @@ string printCommands(int logged)
         commands += CMD_GET + ": get a message from the board\n";
         commands += CMD_LOGOUT + ": logout from the system\n";
     }
+    commands += CMD_GETLOCAL + ": get a local message\n";
     commands += CMD_EXIT + ": close the connection\n";
     return commands + separator;
 }
